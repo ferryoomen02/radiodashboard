@@ -1,0 +1,53 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+/// Eén account hoort bij precies één station (jouw “zender”).
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  stationId    String   @unique
+  station      Station  @relation(fields: [stationId], references: [id])
+  createdAt    DateTime @default(now())
+}
+
+model Station {
+  id             String        @id @default(cuid())
+  name           String
+  /// Welk track-id nu “op de radio” staat (geen DB-FK: voorkomt ronde afhankelijkheden).
+  currentTrackId String?
+  users          User[]
+  tracks         Track[]
+  history        PlayHistory[]
+}
+
+model Track {
+  id              String        @id @default(cuid())
+  stationId       String
+  station         Station       @relation(fields: [stationId], references: [id], onDelete: Cascade)
+  artist          String
+  title           String
+  /// Optioneel: lengte in seconden (“tijd” van het nummer).
+  durationSeconds Int?
+  createdAt       DateTime      @default(now())
+  historyEntries  PlayHistory[]
+
+  @@index([stationId])
+}
+
+model PlayHistory {
+  id        String   @id @default(cuid())
+  stationId String
+  station   Station  @relation(fields: [stationId], references: [id], onDelete: Cascade)
+  trackId   String
+  track     Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  playedAt  DateTime @default(now())
+
+  @@index([stationId, playedAt])
+}
