@@ -73,5 +73,6 @@ export function roleLabelNl(role) {
     STATION_ADMIN: "Station admin",
     USER: "Gebruiker",
   };
-  return m[role] || role;
+  if (role == null || role === "") return "—";
+  return m[role] || String(role);
 }

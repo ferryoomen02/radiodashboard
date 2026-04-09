@@ -1,4 +1,5 @@
 import { getAuth, clearAuth, canAccessStations, canAccessUsers, roleLabelNl } from "./portal-auth.js";
+import { swLog, swLogRedirect } from "./portal-debug.js";
 
 function navItem(href, label, icon, page, current) {
   const active = page === current ? " is-active" : "";
@@ -20,14 +21,20 @@ const iconLogout = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" 
 
 export function mountSidebar() {
   const root = document.getElementById("sidebar-root");
-  if (!root) return;
+  if (!root) {
+    swLog("sidebar", "mountSidebar: geen #sidebar-root (normaal op loginpagina)");
+    return;
+  }
 
   const auth = getAuth();
   if (!auth?.token) {
+    swLog("sidebar", "geen token → redirect /login");
+    swLogRedirect("/login", "mountSidebar zonder token");
     window.location.href = "/login";
     return;
   }
 
+  swLog("sidebar", "mount OK", { page: document.body.dataset.page, role: auth.user?.role });
   const role = auth.user?.role;
   const current = document.body.dataset.page || "";
   const stationLine =
@@ -78,6 +85,7 @@ export function mountSidebar() {
     clearAuth();
     sessionStorage.removeItem("portalDisplayName");
     sessionStorage.removeItem("sonicwaveActiveStationId");
+    swLogRedirect("/login", "uitloggen knop");
     window.location.href = "/login";
   });
 }

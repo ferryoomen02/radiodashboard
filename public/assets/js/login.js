@@ -1,4 +1,5 @@
 import { setAuth, getAuth, displayNameFromEmail } from "./portal-auth.js";
+import { swLog, swLogRedirect } from "./portal-debug.js";
 
 const form = document.getElementById("login-form");
 const errorEl = document.getElementById("login-error");
@@ -6,12 +7,26 @@ const submitBtn = document.getElementById("login-submit");
 
 async function tryRedirectIfLoggedIn() {
   const auth = getAuth();
-  if (!auth?.token) return;
-  const res = await fetch("/auth/me", {
-    headers: { Authorization: `Bearer ${auth.token}` },
-  });
-  if (res.ok) {
-    window.location.href = "/dashboard";
+  if (!auth?.token) {
+    swLog("login", "tryRedirect: geen token in localStorage, blijf op loginpagina");
+    return;
+  }
+  swLog("login", "tryRedirect: token aanwezig, GET /auth/me …");
+  const t0 = typeof performance !== "undefined" ? performance.now() : 0;
+  try {
+    const res = await fetch("/auth/me", {
+      headers: { Authorization: `Bearer ${auth.token}` },
+    });
+    const ms = typeof performance !== "undefined" ? Math.round(performance.now() - t0) : "?";
+    swLog("login", `/auth/me status ${res.status}`, `(${ms}ms)`);
+    if (res.ok) {
+      swLogRedirect("/dashboard", "tryRedirect: /auth/me OK");
+      window.location.href = "/dashboard";
+    } else {
+      swLog("login", "tryRedirect: /auth/me niet OK, blijf op login (geen redirect)");
+    }
+  } catch (err) {
+    swLog("login", "tryRedirect: FETCH GEFAALD (hangt vaak hier bij verkeerde API-URL/CORS)", String(err));
   }
 }
 
@@ -62,8 +77,10 @@ form.addEventListener("submit", async (e) => {
       (data.user?.name && data.user.name.trim()) || displayNameFromEmail(data.user?.email);
     sessionStorage.setItem("portalDisplayName", display);
 
+    swLogRedirect("/dashboard", "login formulier succes");
     window.location.href = "/dashboard";
-  } catch {
+  } catch (err) {
+    swLog("login", "submit: netwerkfout", String(err));
     showError("Netwerkfout. Controleer of de server draait.");
     submitBtn.disabled = false;
   }
