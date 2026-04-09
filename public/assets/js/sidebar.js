@@ -1,6 +1,7 @@
 import { getAuth, clearAuth, canAccessStations, canAccessUsers, roleLabelNl } from "./portal-auth.js";
 import { SUPER_NAV_FALLBACK_KEYS } from "./portal-features.js";
 import { ensurePageSession } from "./portal-session.js";
+import { fetchPlatformBranding } from "./portal-branding.js";
 import { SONICWAVE_DEBUG } from "./portal-debug.js";
 import { swLog, swLogRedirect } from "./portal-debug.js";
 
@@ -36,14 +37,20 @@ function labelFor(keys, key, fallback) {
 }
 
 /** Eén keer innerHTML: geen placeholder → geen dubbele paint / “flikkerend” menu. */
-function sidebarShellWithNav(stationLine, role, navInnerHtml) {
+function sidebarShellWithNav(branding, stationLine, role, navInnerHtml) {
+  const platformTitle = escapeHtml(branding.platformName || "SonicWave");
+  const platformSub = escapeHtml(branding.subtitle || "Platform");
+  const initial = escapeHtml((branding.platformName || "S").slice(0, 1).toUpperCase());
+  const logoOrMark = branding.logoUrl
+    ? `<div class="sidebar-logo-wrap"><img src="${escapeHtml(branding.logoUrl)}" alt="" class="sidebar-logo-img" loading="lazy" decoding="async" /></div>`
+    : `<div class="brand-mark" aria-hidden="true">${initial}</div>`;
   return `
     <div class="sidebar-brand">
       <div class="logo-row">
-        <div class="brand-mark" aria-hidden="true">S</div>
+        ${logoOrMark}
         <div class="brand-text">
-          <strong id="sidebar-brand-title">SonicWave</strong>
-          <span>Platform</span>
+          <strong id="sidebar-brand-title">${platformTitle}</strong>
+          <span>${platformSub}</span>
         </div>
       </div>
       <p class="sidebar-context" id="sidebar-context-line">${escapeHtml(stationLine)}</p>
@@ -110,6 +117,8 @@ async function mountSidebarBody(root) {
   }
   swLog("sidebar", "sessie geladen (gedeeld met pagina)", { role: auth.user?.role });
 
+  const branding = await fetchPlatformBranding();
+
   const role = auth.user?.role;
   const stationLine =
     role === "SUPER_ADMIN"
@@ -163,6 +172,16 @@ async function mountSidebarBody(root) {
     nav += navItem("/invites", "Uitnodigingen", iconMail, "invites", current);
   }
 
+  if (role === "SUPER_ADMIN" && enabled.has("platform_branding")) {
+    nav += navItem(
+      "/settings",
+      labelFor(feats, "platform_branding", "Branding & portal"),
+      iconSettings,
+      "settings",
+      current
+    );
+  }
+
   if (enabled.has("media")) {
     nav += navItem("/media", labelFor(feats, "media", "Media"), iconImage, "media", current);
   }
@@ -195,7 +214,7 @@ async function mountSidebarBody(root) {
   nav += navItem("/account", "Mijn account", iconAccount, "account", current);
   nav += mutedItem("Studio (binnenkort)", iconStation);
 
-  root.innerHTML = sidebarShellWithNav(stationLine, role, nav);
+  root.innerHTML = sidebarShellWithNav(branding, stationLine, role, nav);
   root.dataset.sidebarMounted = "1";
   root.classList.add("sidebar--ready");
 

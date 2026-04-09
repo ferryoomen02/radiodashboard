@@ -9,6 +9,7 @@ import {
 } from "./portal-auth.js";
 import { apiFetch, handleAuthFailure, withStationQuery } from "./portal-api.js";
 import { ensurePageSession, invalidatePageSession } from "./portal-session.js";
+import { fetchPlatformBranding } from "./portal-branding.js";
 import { getActiveStationIdForApi, setActiveStationId } from "./portal-station.js";
 import { swLog, swLogRedirect, SONICWAVE_DEBUG } from "./portal-debug.js";
 import { redirectNoModuleAccess, logAuthRouting } from "./portal-routing.js";
@@ -44,6 +45,8 @@ if (!bootAuth?.token) {
 
   const els = {
     greeting: document.getElementById("greeting-name"),
+    headerBadge: document.getElementById("header-badge"),
+    headerWelcomeText: document.getElementById("header-welcome-text"),
     date: document.getElementById("header-date"),
     superBar: document.getElementById("super-station-bar"),
     superSelect: document.getElementById("active-station-select"),
@@ -270,7 +273,27 @@ if (!bootAuth?.token) {
         }
       }
 
-      els.greeting.textContent = `${timeGreeting()}, ${greetingName(a)}!`;
+      const branding = await fetchPlatformBranding();
+      if (els.headerBadge) {
+        els.headerBadge.textContent = branding.platformName || "SonicWave";
+      }
+
+      const customTitle = (branding.texts?.dashboardWelcomeTitle || "").trim();
+      const customBody = (branding.texts?.dashboardWelcomeText || "").trim();
+      if (customTitle) {
+        els.greeting.textContent = customTitle;
+      } else {
+        els.greeting.textContent = `${timeGreeting()}, ${greetingName(a)}!`;
+      }
+      if (els.headerWelcomeText) {
+        if (customBody) {
+          els.headerWelcomeText.textContent = customBody;
+          els.headerWelcomeText.hidden = false;
+        } else {
+          els.headerWelcomeText.textContent = "";
+          els.headerWelcomeText.hidden = true;
+        }
+      }
       els.date.textContent = formatDateNl();
       els.userEmail.textContent = a.user?.email || "—";
       els.userDisplayName.textContent = greetingName(a);

@@ -14,6 +14,7 @@ export const SUPER_NAV_FALLBACK_KEYS = [
   "audiologger",
   "files",
   "site_settings",
+  "platform_branding",
 ];
 
 /** @type {{ enabledKeys: Set<string>, labelByKey: Record<string, string>, stationId: string | null } | null} */

@@ -1,6 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import express from "express";
+import { platformSettingsRouter } from "./routes/platformSettingsApi.js";
 import cors from "cors";
 import { authRouter } from "./routes/authRoutes.js";
 import { radioRouter } from "./routes/radioRoutes.js";
@@ -12,7 +13,8 @@ import { invitesRouter } from "./routes/invitesApi.js";
 import { mediaRouter } from "./routes/mediaApi.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const publicRoot = path.join(__dirname, "..", "public");
+const projectRoot = path.join(__dirname, "..");
+const publicRoot = path.join(projectRoot, "public");
 const assetsRoot = path.join(publicRoot, "assets");
 
 const app = express();
@@ -23,6 +25,13 @@ app.use(express.json());
 app.use(
   "/assets",
   express.static(assetsRoot, {
+    maxAge: process.env.NODE_ENV === "production" ? "1d" : 0,
+  })
+);
+
+app.use(
+  "/uploads",
+  express.static(path.join(projectRoot, "uploads"), {
     maxAge: process.env.NODE_ENV === "production" ? "1d" : 0,
   })
 );
@@ -55,12 +64,14 @@ app.get("/audiologger", sendPage("audiologger.html"));
 app.get("/files", sendPage("files.html"));
 app.get("/site-settings", sendPage("site-settings.html"));
 app.get("/media", sendPage("media.html"));
+app.get("/settings", sendPage("settings.html"));
 
 app.get("/login-test", (_req, res) => {
   res.redirect(302, "/login");
 });
 
 app.use("/auth", authRouter);
+app.use("/api", platformSettingsRouter);
 app.use("/api", meRouter);
 app.use("/api/feature-definitions", featureDefinitionsRouter);
 app.use("/api/invites", invitesRouter);

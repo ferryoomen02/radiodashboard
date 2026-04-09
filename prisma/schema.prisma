@@ -99,6 +99,16 @@ model InviteToken {
   createdAt   DateTime     @default(now())
 }
 
+/// Singleton platform / portal (branding, vaste teksten); `texts` JSON voor uitbreiding.
+model PlatformSettings {
+  id             String   @id @default("default")
+  logoStorageKey String?
+  platformName   String   @default("SonicWave")
+  subtitle       String   @default("Platform")
+  texts          Json     @default("{}")
+  updatedAt      DateTime @updatedAt
+}
+
 /// Geüploade mediabestanden per zender (uitbreidbaar voor DJ, nieuws, site).
 model MediaAsset {
   id          String   @id @default(cuid())

@@ -13,6 +13,8 @@ export const FEATURE_KEYS = {
   FILES: "files",
   SITE_SETTINGS: "site_settings",
   MEDIA: "media",
+  /** Branding & vaste portal-teksten (super). */
+  PLATFORM_BRANDING: "platform_branding",
 };
 
 /** Standaard bij nieuwe zender: alles aan. */
@@ -30,4 +32,5 @@ export const FEATURE_LABELS = {
   [FEATURE_KEYS.FILES]: "Bestanden (verkeer)",
   [FEATURE_KEYS.SITE_SETTINGS]: "Site-instellingen",
   [FEATURE_KEYS.MEDIA]: "Media",
+  [FEATURE_KEYS.PLATFORM_BRANDING]: "Branding & portal",
 };

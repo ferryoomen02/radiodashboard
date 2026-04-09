@@ -15,6 +15,11 @@ const BUILTIN_FEATURES = [
   { key: "files", label: "Bestanden (verkeer)", description: "Verkeersinformatie / bestanden" },
   { key: "site_settings", label: "Site-instellingen", description: "Site-instellingen per zender" },
   { key: "media", label: "Media", description: "Afbeeldingen en mediabibliotheek" },
+  {
+    key: "platform_branding",
+    label: "Branding & portal",
+    description: "Logo, platformnaam en vaste dashboardteksten",
+  },
 ];
 
 async function seedFeatureDefinitions() {
