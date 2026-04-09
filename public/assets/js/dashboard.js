@@ -1,5 +1,6 @@
 import {
   getAuth,
+  setAuth,
   greetingName,
   timeGreeting,
   formatDateNl,
@@ -15,11 +16,24 @@ if (!bootAuth?.token) {
   swLogRedirect("/login", "dashboard.js zonder token");
   window.location.href = "/login";
 } else {
-  swLog("dashboard", "module-load OK", {
-    role: bootAuth.user?.role,
-    email: bootAuth.user?.email,
-    stationId: bootAuth.station?.id,
-  });
+  /** Leest body één keer; voorkomt vastlopen als de server HTML of gebroken JSON terugstuurt. */
+  async function parseResponseJson(res) {
+    const raw = await res.text();
+    if (!raw) return { ok: true, data: {}, raw: "" };
+    try {
+      return { ok: true, data: JSON.parse(raw), raw };
+    } catch (e) {
+      console.error("[SonicWave debug] JSON parse mislukt", e, raw.slice(0, 300));
+      return { ok: false, data: null, raw, error: e };
+    }
+  }
+
+  function showDashboardError(title, detail) {
+    const html = `<div class="alert alert-error" role="alert"><strong>${escapeHtml(title)}</strong><br/>${escapeHtml(detail || "Onbekende fout")}</div>`;
+    els.stationInfo.innerHTML = html;
+    els.nowPlayingRoot.innerHTML = '<p class="empty-state">Geen live-data geladen.</p>';
+    els.historyContainer.innerHTML = "";
+  }
 
   const els = {
     greeting: document.getElementById("greeting-name"),
@@ -107,9 +121,45 @@ if (!bootAuth?.token) {
       .join("")}</ul>`;
   }
 
+  /**
+   * Synchroniseert user + station uit de API naar localStorage.
+   * Voorkomt dat een oude portalAuth (zonder role) de verkeerde tak kiest.
+   */
+  async function syncUserFromServer(token) {
+    const res = await apiFetch("/auth/me");
+    console.log("[SonicWave debug] GET /auth/me status:", res.status);
+    const parsed = await parseResponseJson(res);
+    console.log("[SonicWave debug] GET /auth/me body:", parsed.ok ? parsed.data : parsed.raw?.slice(0, 400));
+
+    if (handleAuthFailure(res)) {
+      return null;
+    }
+    if (!res.ok) {
+      showDashboardError("Profiel ophalen", `HTTP ${res.status}`);
+      return null;
+    }
+    if (!parsed.ok || !parsed.data?.user) {
+      showDashboardError(
+        "Profiel ophalen",
+        "Server stuurde geen geldige JSON of mist `user`. Controleer of je op dezelfde host/port zit als de API."
+      );
+      return null;
+    }
+
+    setAuth({
+      token,
+      user: parsed.data.user,
+      station: parsed.data.station ?? null,
+    });
+    const fresh = getAuth();
+    console.log("[SonicWave debug] localStorage bijgewerkt, role:", fresh?.user?.role, "station:", fresh?.station?.id);
+    return fresh;
+  }
+
   async function resolveActiveStationId(a) {
-    if (a.user.role !== "SUPER_ADMIN") {
-      swLog("dashboard", "resolveStation: geen super", { role: a.user.role });
+    const role = a.user?.role;
+    if (role !== "SUPER_ADMIN") {
+      swLog("dashboard", "resolveStation: geen super", { role });
       els.superBar.hidden = true;
       const sid = getActiveStationIdForApi(a);
       swLog("dashboard", "resolveStation: stationId uit auth", sid || "(null)");
@@ -119,17 +169,26 @@ if (!bootAuth?.token) {
     swLog("dashboard", "resolveStation: super admin → GET /api/stations");
     els.superBar.hidden = false;
     const res = await apiFetch("/api/stations");
+    console.log("[SonicWave debug] GET /api/stations status:", res.status);
+    const stationsParsed = await parseResponseJson(res);
+    console.log("[SonicWave debug] GET /api/stations body:", stationsParsed.ok ? stationsParsed.data : stationsParsed.raw?.slice(0, 400));
+
     if (handleAuthFailure(res)) {
       swLog("dashboard", "resolveStation: afgebroken na 401");
       return null;
     }
     if (!res.ok) {
-      swLog("dashboard", "resolveStation: /api/stations niet OK", res.status);
+      const errMsg = stationsParsed.ok ? stationsParsed.data?.error : "Ongeldig antwoord";
+      showDashboardError("Zenders laden", errMsg || `HTTP ${res.status}`);
       els.superSelect.innerHTML = "";
       return null;
     }
+    if (!stationsParsed.ok) {
+      showDashboardError("Zenders laden", "Antwoord is geen geldige JSON.");
+      return null;
+    }
 
-    const { stations } = await res.json();
+    const { stations } = stationsParsed.data;
     swLog("dashboard", "resolveStation: stations geladen", (stations || []).length);
     els.superSelect.innerHTML = (stations || [])
       .map(
@@ -158,56 +217,90 @@ if (!bootAuth?.token) {
   }
 
   async function loadDashboard() {
-    const a = getAuth();
-    if (!a?.token) {
-      swLog("dashboard", "loadDashboard: token weg → /login");
-      swLogRedirect("/login", "loadDashboard zonder token");
-      window.location.href = "/login";
-      return;
-    }
+    try {
+      const raw = getAuth();
+      console.log("[SonicWave debug] token in localStorage:", Boolean(raw?.token), raw?.token ? `(${String(raw.token).slice(0, 16)}…)` : "");
 
-    swLog("dashboard", "loadDashboard: start");
-    els.greeting.textContent = `${timeGreeting()}, ${greetingName(a)}!`;
-    els.date.textContent = formatDateNl();
-    els.userEmail.textContent = a.user?.email || "—";
-    els.userDisplayName.textContent = greetingName(a);
-    els.userRolePill.textContent = roleLabelNl(a.user?.role) || "—";
+      if (!raw?.token) {
+        swLog("dashboard", "loadDashboard: token weg → /login");
+        swLogRedirect("/login", "loadDashboard zonder token");
+        window.location.href = "/login";
+        return;
+      }
 
-    const sid = await resolveActiveStationId(a);
+      const a = await syncUserFromServer(raw.token);
+      if (!a) {
+        return;
+      }
 
-    if (a.user.role === "SUPER_ADMIN" && !sid) {
-      swLog("dashboard", "loadDashboard: super zonder zender — stop (geen /radio)");
-      els.stationInfo.innerHTML =
-        '<p class="empty-state">Maak eerst een zender aan via <strong>Zenders</strong> in het menu.</p>';
-      els.nowPlayingRoot.innerHTML = "";
+      els.greeting.textContent = `${timeGreeting()}, ${greetingName(a)}!`;
+      els.date.textContent = formatDateNl();
+      els.userEmail.textContent = a.user?.email || "—";
+      els.userDisplayName.textContent = greetingName(a);
+      els.userRolePill.textContent = roleLabelNl(a.user?.role) || "—";
+
+      const sid = await resolveActiveStationId(a);
+      /** resolveActiveStationId kan showDashboardError hebben getoond (bijv. /api/stations mislukt) */
+      if (els.stationInfo.querySelector(".alert-error")) {
+        return;
+      }
+
+      if (a.user?.role === "SUPER_ADMIN" && !sid) {
+        swLog("dashboard", "loadDashboard: super zonder zender — stop (geen /radio)");
+        els.stationInfo.innerHTML =
+          '<p class="empty-state">Maak eerst een zender aan via <strong>Zenders</strong> in het menu.</p>';
+        els.nowPlayingRoot.innerHTML = "";
+        els.historyContainer.innerHTML = "";
+        return;
+      }
+
+      els.stationInfo.innerHTML = '<p class="loading-shimmer">Laden…</p>';
+      els.nowPlayingRoot.innerHTML = '<p class="loading-shimmer">Laden…</p>';
       els.historyContainer.innerHTML = "";
-      return;
-    }
 
-    els.stationInfo.innerHTML = '<p class="loading-shimmer">Laden…</p>';
-    els.nowPlayingRoot.innerHTML = '<p class="loading-shimmer">Laden…</p>';
-    els.historyContainer.innerHTML = "";
+      const url = withStationQuery("/radio", sid);
+      swLog("dashboard", "loadDashboard: GET", url);
 
-    const url = withStationQuery("/radio", sid);
-    swLog("dashboard", "loadDashboard: GET", url);
-    const res = await apiFetch(url);
-    if (handleAuthFailure(res)) {
-      swLog("dashboard", "loadDashboard: 401 handler heeft redirect gedaan");
-      return;
-    }
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      swLog("dashboard", "loadDashboard: /radio fout", { status: res.status, err });
-      els.stationInfo.innerHTML = `<p class="empty-state">${escapeHtml(err.error || "Kon data niet laden.")}</p>`;
-      els.nowPlayingRoot.innerHTML = "";
-      return;
-    }
+      const res = await apiFetch(url);
+      console.log("[SonicWave debug] GET /radio status:", res.status);
 
-    const data = await res.json();
-    const st = data.station;
-    swLog("dashboard", "loadDashboard: data OK", { station: st?.name });
+      const radioParsed = await parseResponseJson(res);
+      console.log("[SonicWave debug] GET /radio body:", radioParsed.ok ? radioParsed.data : radioParsed.raw?.slice(0, 600));
 
-    els.stationInfo.innerHTML = `
+      if (handleAuthFailure(res)) {
+        swLog("dashboard", "loadDashboard: 401 → redirect login");
+        return;
+      }
+
+      if (!res.ok) {
+        const errMsg = radioParsed.ok
+          ? radioParsed.data?.error || `HTTP ${res.status}`
+          : "Server stuurde geen geldige JSON (vaak HTML van een proxy of 404-pagina).";
+        showDashboardError("Radio-data", errMsg);
+        return;
+      }
+
+      if (!radioParsed.ok) {
+        showDashboardError(
+          "Radio-data",
+          "Kon het antwoord niet als JSON lezen. Controleer in Network of `/radio` JSON teruggeeft."
+        );
+        return;
+      }
+
+      const data = radioParsed.data;
+      if (!data || typeof data.station !== "object" || data.station === null) {
+        showDashboardError(
+          "Radio-data",
+          "Antwoord mist een geldig `station`-object. Controleer de API."
+        );
+        return;
+      }
+
+      const st = data.station;
+      swLog("dashboard", "loadDashboard: data OK", { station: st?.name });
+
+      els.stationInfo.innerHTML = `
     <div class="station-meta">
       <p><strong>Station</strong><br />${escapeHtml(st?.name || "—")}</p>
       <p><strong>Station-ID</strong><br /><code style="font-size:0.8rem">${escapeHtml(st?.id || "—")}</code></p>
@@ -220,10 +313,17 @@ if (!bootAuth?.token) {
     </div>
   `;
 
-    const hist = data.history || [];
-    renderNowPlaying(data.nowPlaying, hist);
-    renderHistory(hist);
-    swLog("dashboard", "loadDashboard: klaar");
+      const hist = Array.isArray(data.history) ? data.history : [];
+      renderNowPlaying(data.nowPlaying ?? null, hist);
+      renderHistory(hist);
+      swLog("dashboard", "loadDashboard: klaar");
+    } catch (err) {
+      console.error("[SonicWave debug] loadDashboard exception:", err);
+      showDashboardError(
+        "Fout in dashboard",
+        err?.message || String(err)
+      );
+    }
   }
 
   els.addForm.addEventListener("submit", async (e) => {
@@ -233,7 +333,7 @@ if (!bootAuth?.token) {
 
     const a = getAuth();
     const sid = getActiveStationIdForApi(a);
-    if (a.user.role === "SUPER_ADMIN" && !sid) {
+    if (a.user?.role === "SUPER_ADMIN" && !sid) {
       els.addError.hidden = false;
       els.addError.textContent = "Kies eerst een actieve zender.";
       return;
@@ -248,28 +348,37 @@ if (!bootAuth?.token) {
       const n = parseInt(durationRaw, 10);
       if (Number.isFinite(n) && n >= 0) body.durationSeconds = n;
     }
-    if (a.user.role === "SUPER_ADMIN") {
+    if (a.user?.role === "SUPER_ADMIN") {
       body.stationId = sid;
     }
 
     swLog("dashboard", "POST /tracks", body);
-    const res = await apiFetch("/tracks", {
-      method: "POST",
-      body: JSON.stringify(body),
-    });
-    if (handleAuthFailure(res)) return;
+    try {
+      const res = await apiFetch("/tracks", {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
+      if (handleAuthFailure(res)) return;
 
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
+      const parsed = await parseResponseJson(res);
+      if (!res.ok) {
+        els.addError.hidden = false;
+        els.addError.textContent = parsed.ok
+          ? parsed.data?.error || `HTTP ${res.status}`
+          : "Ongeldig antwoord van server.";
+        return;
+      }
+
+      const data = parsed.ok ? parsed.data : {};
+      els.addSuccess.hidden = false;
+      els.addSuccess.textContent = `Toegevoegd: ${data.artist} — ${data.title}`;
+      els.addForm.reset();
+      await loadDashboard();
+    } catch (err) {
+      console.error("[SonicWave debug] POST /tracks", err);
       els.addError.hidden = false;
-      els.addError.textContent = data.error || "Nummer toevoegen mislukt.";
-      return;
+      els.addError.textContent = err?.message || "Netwerkfout.";
     }
-
-    els.addSuccess.hidden = false;
-    els.addSuccess.textContent = `Toegevoegd: ${data.artist} — ${data.title}`;
-    els.addForm.reset();
-    await loadDashboard();
   });
 
   loadDashboard();
