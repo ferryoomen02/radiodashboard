@@ -1,13 +1,9 @@
-import { getAuth } from "./portal-auth.js";
+import { getAuth, isSuperAdminRole } from "./portal-auth.js";
 import { apiFetch, handleAuthFailure } from "./portal-api.js";
-import { fetchActiveFeatures } from "./portal-features.js";
+import { refreshAuthProfile } from "./auth-refresh.js";
 
-const auth = getAuth();
-if (!auth?.token) {
+if (!getAuth()?.token) {
   window.location.href = "/login";
-}
-if (auth.user?.role !== "SUPER_ADMIN") {
-  window.location.href = "/dashboard";
 }
 
 const tbody = document.getElementById("invites-tbody");
@@ -94,9 +90,14 @@ form.addEventListener("submit", async (e) => {
 });
 
 (async () => {
-  const feats = await fetchActiveFeatures();
-  if (!feats?.enabledKeys?.has("invites")) {
-    window.location.href = "/account";
+  await refreshAuthProfile();
+  const auth = getAuth();
+  if (!auth?.token) {
+    window.location.href = "/login";
+    return;
+  }
+  if (!isSuperAdminRole(auth.user?.role)) {
+    window.location.href = "/dashboard";
     return;
   }
   await loadInvites();

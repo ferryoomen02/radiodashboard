@@ -1,16 +1,14 @@
-import { getAuth, canAccessStations } from "./portal-auth.js";
+import { getAuth, canAccessStations, isSuperAdminRole } from "./portal-auth.js";
 import { apiFetch, handleAuthFailure } from "./portal-api.js";
 import { fetchActiveFeatures } from "./portal-features.js";
+import { refreshAuthProfile } from "./auth-refresh.js";
 
-const auth = getAuth();
+let auth = getAuth();
 if (!auth?.token) {
   window.location.href = "/login";
 }
-if (!canAccessStations(auth.user?.role)) {
-  window.location.href = "/dashboard";
-}
 
-const isSuper = auth.user?.role === "SUPER_ADMIN";
+let isSuper = false;
 const tbody = document.getElementById("stations-tbody");
 const theadRow = document.getElementById("stations-thead-row");
 const alertEl = document.getElementById("stations-alert");
@@ -23,12 +21,15 @@ const formNew = document.getElementById("form-new-station");
 const newMsg = document.getElementById("new-station-msg");
 const titleEl = document.getElementById("stations-page-title");
 
-if (isSuper) {
-  superCreate.hidden = false;
-  assignCard.hidden = false;
-  titleEl.textContent = "Zenders";
-} else {
-  titleEl.textContent = "Zenderinstellingen";
+function applyStationsRoleUi() {
+  isSuper = auth?.user?.role === "SUPER_ADMIN";
+  if (isSuper) {
+    superCreate.hidden = false;
+    assignCard.hidden = false;
+    titleEl.textContent = "Zenders";
+  } else {
+    titleEl.textContent = "Zenderinstellingen";
+  }
 }
 
 function escapeHtml(s) {
@@ -179,10 +180,25 @@ formAssign.addEventListener("submit", async (e) => {
 });
 
 async function boot() {
-  const feats = await fetchActiveFeatures();
-  if (!feats?.enabledKeys?.has("stations")) {
-    window.location.href = "/account";
+  await refreshAuthProfile();
+  auth = getAuth();
+  if (!auth?.token) {
+    window.location.href = "/login";
     return;
+  }
+  if (!canAccessStations(auth.user?.role)) {
+    window.location.href = "/dashboard";
+    return;
+  }
+  applyStationsRoleUi();
+
+  const me = auth;
+  if (!isSuperAdminRole(me?.user?.role)) {
+    const feats = await fetchActiveFeatures(true);
+    if (!feats?.enabledKeys?.has("stations")) {
+      window.location.href = "/account";
+      return;
+    }
   }
   if (isSuper && theadRow) {
     const lastTh = theadRow.querySelector("th:last-child");

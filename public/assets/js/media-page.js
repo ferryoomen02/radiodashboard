@@ -1,14 +1,15 @@
-import { getAuth } from "./portal-auth.js";
+import { getAuth, isSuperAdminRole } from "./portal-auth.js";
 import { apiFetch, handleAuthFailure, withStationQuery } from "./portal-api.js";
 import { fetchActiveFeatures } from "./portal-features.js";
+import { refreshAuthProfile } from "./auth-refresh.js";
 import { getActiveStationIdForApi, setActiveStationId } from "./portal-station.js";
 
-const auth = getAuth();
+let auth = getAuth();
 if (!auth?.token) {
   window.location.href = "/login";
 }
 
-const isSuper = auth.user?.role === "SUPER_ADMIN";
+let isSuper = false;
 const superBar = document.getElementById("super-media-bar");
 const superSelect = document.getElementById("media-station-select");
 const grid = document.getElementById("media-grid");
@@ -126,7 +127,7 @@ async function loadLibrary() {
     card.appendChild(img);
     card.appendChild(cap);
 
-    if (auth.user?.role === "SUPER_ADMIN" || auth.user?.role === "STATION_ADMIN") {
+    if (getAuth()?.user?.role === "SUPER_ADMIN" || getAuth()?.user?.role === "STATION_ADMIN") {
       const del = document.createElement("button");
       del.type = "button";
       del.className = "btn-secondary";
@@ -197,10 +198,15 @@ form.addEventListener("submit", async (e) => {
 });
 
 (async () => {
-  const feats = await fetchActiveFeatures();
-  if (!feats?.enabledKeys?.has("media")) {
-    window.location.href = "/account";
-    return;
+  await refreshAuthProfile();
+  auth = getAuth();
+  isSuper = isSuperAdminRole(auth?.user?.role);
+  if (!isSuper) {
+    const feats = await fetchActiveFeatures(true);
+    if (!feats?.enabledKeys?.has("media")) {
+      window.location.href = "/account";
+      return;
+    }
   }
   await loadLibrary();
 })();

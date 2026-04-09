@@ -5,9 +5,11 @@ import {
   timeGreeting,
   formatDateNl,
   roleLabelNl,
+  isSuperAdminRole,
 } from "./portal-auth.js";
 import { apiFetch, handleAuthFailure, withStationQuery } from "./portal-api.js";
 import { fetchActiveFeatures, clearActiveFeaturesCache } from "./portal-features.js";
+import { refreshAuthProfile } from "./auth-refresh.js";
 import { getActiveStationIdForApi, setActiveStationId } from "./portal-station.js";
 import { swLog, swLogRedirect } from "./portal-debug.js";
 
@@ -221,12 +223,6 @@ if (!bootAuth?.token) {
 
   async function loadDashboard() {
     try {
-      const featState = await fetchActiveFeatures();
-      if (featState && !featState.enabledKeys.has("dashboard")) {
-        window.location.href = "/account";
-        return;
-      }
-
       const raw = getAuth();
       console.log("[SonicWave debug] token in localStorage:", Boolean(raw?.token), raw?.token ? `(${String(raw.token).slice(0, 16)}…)` : "");
 
@@ -237,9 +233,20 @@ if (!bootAuth?.token) {
         return;
       }
 
-      const a = await syncUserFromServer(raw.token);
+      let a = await refreshAuthProfile();
+      if (!a) {
+        a = await syncUserFromServer(raw.token);
+      }
       if (!a) {
         return;
+      }
+
+      const featState = await fetchActiveFeatures(true);
+      if (!isSuperAdminRole(a.user?.role)) {
+        if (featState && !featState.enabledKeys.has("dashboard")) {
+          window.location.href = "/account";
+          return;
+        }
       }
 
       els.greeting.textContent = `${timeGreeting()}, ${greetingName(a)}!`;

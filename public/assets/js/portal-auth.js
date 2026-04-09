@@ -76,3 +76,8 @@ export function roleLabelNl(role) {
   if (role == null || role === "") return "—";
   return m[role] || String(role);
 }
+
+/** Client-side rolcheck (na refreshAuthProfile / setAuth). */
+export function isSuperAdminRole(role) {
+  return role === "SUPER_ADMIN";
+}

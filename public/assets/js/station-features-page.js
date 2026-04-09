@@ -1,13 +1,10 @@
-import { getAuth } from "./portal-auth.js";
+import { getAuth, isSuperAdminRole } from "./portal-auth.js";
+import { refreshAuthProfile } from "./auth-refresh.js";
 import { apiFetch, handleAuthFailure } from "./portal-api.js";
 import { fetchActiveFeatures } from "./portal-features.js";
 
-const auth = getAuth();
-if (!auth?.token) {
+if (!getAuth()?.token) {
   window.location.href = "/login";
-}
-if (auth.user?.role !== "SUPER_ADMIN") {
-  window.location.href = "/dashboard";
 }
 
 const sel = document.getElementById("sf-station");
@@ -195,7 +192,17 @@ formDef.addEventListener("submit", async (e) => {
 });
 
 (async () => {
-  const feats = await fetchActiveFeatures();
+  await refreshAuthProfile();
+  const auth = getAuth();
+  if (!auth?.token) {
+    window.location.href = "/login";
+    return;
+  }
+  if (!isSuperAdminRole(auth.user?.role)) {
+    window.location.href = "/dashboard";
+    return;
+  }
+  const feats = await fetchActiveFeatures(true);
   if (!feats?.enabledKeys?.has("stations")) {
     window.location.href = "/account";
     return;

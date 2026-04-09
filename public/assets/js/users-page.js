@@ -1,17 +1,15 @@
-import { getAuth, canAccessUsers, roleLabelNl } from "./portal-auth.js";
+import { getAuth, canAccessUsers, roleLabelNl, isSuperAdminRole } from "./portal-auth.js";
 import { apiFetch, handleAuthFailure } from "./portal-api.js";
 import { fetchActiveFeatures } from "./portal-features.js";
+import { refreshAuthProfile } from "./auth-refresh.js";
 
-const auth = getAuth();
-if (!auth?.token) {
+let auth = null;
+let isSuper = false;
+let isStationAdminUser = false;
+
+if (!getAuth()?.token) {
   window.location.href = "/login";
 }
-if (!canAccessUsers(auth.user?.role)) {
-  window.location.href = "/dashboard";
-}
-
-const isSuper = auth.user?.role === "SUPER_ADMIN";
-const isStationAdminUser = auth.user?.role === "STATION_ADMIN";
 
 /** Opties voor staff-rechten (geen super-only modules). */
 const PERM_OPTIONS = [
@@ -45,11 +43,16 @@ const editPermEmail = document.getElementById("edit-perm-email");
 let editingUserId = null;
 let lastUsers = [];
 
-if (isSuper) {
-  roleWrap.hidden = false;
-  stationWrap.hidden = false;
-} else {
-  hintSa.hidden = false;
+function applyRoleUi() {
+  if (isSuper) {
+    roleWrap.hidden = false;
+    stationWrap.hidden = false;
+    hintSa.hidden = true;
+  } else {
+    roleWrap.hidden = true;
+    stationWrap.hidden = true;
+    hintSa.hidden = false;
+  }
 }
 
 function escapeHtml(s) {
@@ -131,7 +134,8 @@ async function loadUsers() {
     .map((u) => {
       const perms = Array.isArray(u.permissions) ? u.permissions.join(", ") || "—" : "—";
       const canEdit =
-        u.role === "STAFF" && (isSuper || (isStationAdminUser && u.station?.id === auth.station?.id));
+        u.role === "STAFF" &&
+        (isSuper || (isStationAdminUser && u.station?.id === getAuth()?.station?.id));
       return `
     <tr data-id="${escapeHtml(u.id)}" data-role="${escapeHtml(u.role)}">
       <td>${escapeHtml(u.name)}</td>
@@ -254,10 +258,26 @@ form.addEventListener("submit", async (e) => {
 });
 
 (async () => {
-  const feats = await fetchActiveFeatures();
-  if (!feats?.enabledKeys?.has("users")) {
-    window.location.href = "/account";
+  await refreshAuthProfile();
+  auth = getAuth();
+  if (!auth?.token) {
+    window.location.href = "/login";
     return;
+  }
+  if (!canAccessUsers(auth.user?.role)) {
+    window.location.href = "/dashboard";
+    return;
+  }
+  isSuper = auth.user?.role === "SUPER_ADMIN";
+  isStationAdminUser = auth.user?.role === "STATION_ADMIN";
+  applyRoleUi();
+
+  if (!isSuperAdminRole(auth.user?.role)) {
+    const feats = await fetchActiveFeatures(true);
+    if (!feats?.enabledKeys?.has("users")) {
+      window.location.href = "/account";
+      return;
+    }
   }
   renderPermCheckboxes(permsGrid, "nu-perm", []);
   await loadStationsForSelect();

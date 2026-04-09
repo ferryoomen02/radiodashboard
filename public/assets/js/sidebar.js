@@ -1,6 +1,7 @@
-import { getAuth, setAuth, clearAuth, canAccessStations, canAccessUsers, roleLabelNl } from "./portal-auth.js";
-import { apiFetch, handleAuthFailure } from "./portal-api.js";
-import { fetchActiveFeatures, SUPER_NAV_FALLBACK_KEYS, clearActiveFeaturesCache } from "./portal-features.js";
+import { getAuth, clearAuth, canAccessStations, canAccessUsers, roleLabelNl } from "./portal-auth.js";
+import { refreshAuthProfile } from "./auth-refresh.js";
+import { fetchActiveFeatures, SUPER_NAV_FALLBACK_KEYS } from "./portal-features.js";
+import { SONICWAVE_DEBUG } from "./portal-debug.js";
 import { swLog, swLogRedirect } from "./portal-debug.js";
 
 function navItem(href, label, icon, page, current) {
@@ -74,22 +75,13 @@ export async function mountSidebar() {
     return;
   }
 
-  const meRes = await apiFetch("/auth/me");
-  if (handleAuthFailure(meRes)) {
+  const refreshed = await refreshAuthProfile();
+  auth = refreshed || getAuth();
+  if (!auth?.token) {
     return;
   }
-  if (meRes.ok) {
-    const me = await meRes.json().catch(() => null);
-    if (me?.user) {
-      setAuth({
-        token: auth.token,
-        user: me.user,
-        station: me.station ?? null,
-      });
-      clearActiveFeaturesCache();
-      auth = getAuth();
-      swLog("sidebar", "profiel gesynchroniseerd met server", { role: me.user?.role });
-    }
+  if (refreshed) {
+    swLog("sidebar", "profiel gesynchroniseerd met server", { role: auth.user?.role });
   }
 
   const role = auth.user?.role;
@@ -187,6 +179,15 @@ export async function mountSidebar() {
 
   root.classList.remove("sidebar--loading");
   root.classList.add("sidebar--ready");
+
+  if (SONICWAVE_DEBUG) {
+    const dbg = document.createElement("div");
+    dbg.className = "sidebar-auth-debug";
+    dbg.setAttribute("aria-label", "Auth debug");
+    const u = getAuth()?.user;
+    dbg.innerHTML = `<div style="font-size:10px;line-height:1.35;opacity:0.75;padding:0.5rem 1rem 0;color:rgba(255,255,255,0.65);word-break:break-word;border-top:1px solid rgba(255,255,255,0.08)"><strong style="color:rgba(255,255,255,0.9)">Debug</strong><br/>role: ${escapeHtml(String(u?.role ?? "—"))}<br/>email: ${escapeHtml(String(u?.email ?? "—"))}<br/>permissions: ${escapeHtml(JSON.stringify(u?.permissions ?? []))}</div>`;
+    root.querySelector(".sidebar-footer")?.before(dbg);
+  }
 
   root.querySelector("#sidebar-logout")?.addEventListener("click", () => {
     clearAuth();
