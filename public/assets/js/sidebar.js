@@ -24,9 +24,38 @@ const iconSliders = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"
 const iconMic = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>`;
 const iconFile = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>`;
 const iconSettings = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
+const iconImage = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>`;
 
 function labelFor(keys, key, fallback) {
   return keys.labelByKey[key] || fallback;
+}
+
+function sidebarShell(stationLine, role, navPlaceholder = true) {
+  const navContent = navPlaceholder
+    ? `<div class="nav-placeholder" style="padding:0.5rem 1.25rem;font-size:0.85rem;color:rgba(255,255,255,0.5)">Menu laden…</div>`
+    : "";
+  return `
+    <div class="sidebar-brand">
+      <div class="logo-row">
+        <div class="brand-mark" aria-hidden="true">S</div>
+        <div class="brand-text">
+          <strong id="sidebar-brand-title">SonicWave</strong>
+          <span>Platform</span>
+        </div>
+      </div>
+      <p class="sidebar-context" id="sidebar-context-line">${escapeHtml(stationLine)}</p>
+    </div>
+    <nav class="nav-section" aria-label="Menu">
+      <div class="nav-label">Menu · ${escapeHtml(roleLabelNl(role))}</div>
+      ${navContent}
+    </nav>
+    <div class="sidebar-footer">
+      <button type="button" class="nav-item sidebar-logout" id="sidebar-logout" style="width:100%;border:none;background:transparent;text-align:left;cursor:pointer;font:inherit;">
+        ${iconLogout}
+        Uitloggen
+      </button>
+    </div>
+  `;
 }
 
 export async function mountSidebar() {
@@ -44,17 +73,20 @@ export async function mountSidebar() {
     return;
   }
 
-  const feats = await fetchActiveFeatures();
-  const enabled = feats?.enabledKeys ?? new Set();
   const role = auth.user?.role;
-  const current = document.body.dataset.page || "";
-
-  swLog("sidebar", "mount OK", { page: current, role: auth.user?.role });
-
   const stationLine =
     role === "SUPER_ADMIN"
       ? "Alle zenders"
       : auth.station?.name || "Geen zender";
+
+  root.classList.add("sidebar--loading");
+  root.innerHTML = sidebarShell(stationLine, role, true);
+
+  const feats = await fetchActiveFeatures();
+  const enabled = feats?.enabledKeys ?? new Set();
+  const current = document.body.dataset.page || "";
+
+  swLog("sidebar", "mount OK", { page: current, role: auth.user?.role });
 
   let nav = "";
 
@@ -85,6 +117,10 @@ export async function mountSidebar() {
     nav += navItem("/invites", "Uitnodigingen", iconMail, "invites", current);
   }
 
+  if (enabled.has("media")) {
+    nav += navItem("/media", labelFor(feats, "media", "Media"), iconImage, "media", current);
+  }
+
   if (enabled.has("djs")) {
     nav += navItem("/djs", labelFor(feats, "djs", "DJ's"), iconMic, "djs", current);
   }
@@ -113,28 +149,16 @@ export async function mountSidebar() {
   nav += navItem("/account", "Mijn account", iconAccount, "account", current);
   nav += mutedItem("Studio (binnenkort)", iconStation);
 
-  root.innerHTML = `
-    <div class="sidebar-brand">
-      <div class="logo-row">
-        <div class="brand-mark" aria-hidden="true">S</div>
-        <div class="brand-text">
-          <strong id="sidebar-brand-title">SonicWave</strong>
-          <span>Platform</span>
-        </div>
-      </div>
-      <p class="sidebar-context" id="sidebar-context-line">${escapeHtml(stationLine)}</p>
-    </div>
-    <nav class="nav-section" aria-label="Menu">
+  const navSection = root.querySelector(".nav-section");
+  if (navSection) {
+    navSection.innerHTML = `
       <div class="nav-label">Menu · ${escapeHtml(roleLabelNl(role))}</div>
       ${nav}
-    </nav>
-    <div class="sidebar-footer">
-      <button type="button" class="nav-item sidebar-logout" id="sidebar-logout" style="width:100%;border:none;background:transparent;text-align:left;cursor:pointer;font:inherit;">
-        ${iconLogout}
-        Uitloggen
-      </button>
-    </div>
-  `;
+    `;
+  }
+
+  root.classList.remove("sidebar--loading");
+  root.classList.add("sidebar--ready");
 
   root.querySelector("#sidebar-logout")?.addEventListener("click", () => {
     clearAuth();

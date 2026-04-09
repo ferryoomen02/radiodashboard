@@ -10,19 +10,28 @@ generator client {
 enum Role {
   SUPER_ADMIN
   STATION_ADMIN
-  USER
+  STAFF
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
 }
 
 model User {
-  id           String    @id @default(cuid())
+  id           String       @id @default(cuid())
   name         String
-  email        String    @unique
+  email        String       @unique
   passwordHash String
-  role         Role      @default(USER)
+  role         Role         @default(STAFF)
   stationId    String?
-  station      Station?  @relation(fields: [stationId], references: [id])
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  station      Station?     @relation(fields: [stationId], references: [id])
+  /// JSON-array van module-keys die deze gebruiker mag gebruiken (voor STAFF binnen een zender).
+  permissions  Json         @default("[]")
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  mediaAssets  MediaAsset[]
 
   @@index([stationId])
   @@index([role])
@@ -38,6 +47,7 @@ model Station {
   users           User[]
   tracks          Track[]
   history         PlayHistory[]
+  mediaAssets     MediaAsset[]
 }
 
 model Track {
@@ -74,14 +84,37 @@ model FeatureDefinition {
   createdAt   DateTime @default(now())
 }
 
-/// Uitnodiging voor registratie (o.a. nieuwe super admin); token alleen als hash opgeslagen.
+/// Uitnodiging voor registratie; token alleen als hash opgeslagen.
 model InviteToken {
-  id          String    @id @default(cuid())
+  id          String       @id @default(cuid())
   email       String
-  tokenHash   String    @unique
-  role        Role      @default(SUPER_ADMIN)
+  tokenHash   String       @unique
+  role        Role         @default(SUPER_ADMIN)
+  status      InviteStatus @default(PENDING)
   expiresAt   DateTime
   usedAt      DateTime?
+  emailSentAt DateTime?
+  emailError  String?
   createdById String?
-  createdAt   DateTime  @default(now())
+  createdAt   DateTime     @default(now())
+}
+
+/// Geüploade mediabestanden per zender (uitbreidbaar voor DJ, nieuws, site).
+model MediaAsset {
+  id          String   @id @default(cuid())
+  stationId   String
+  station     Station  @relation(fields: [stationId], references: [id], onDelete: Cascade)
+  filename    String
+  storageKey  String   @unique
+  mimeType    String
+  sizeBytes   Int
+  width       Int?
+  height      Int?
+  title       String?
+  altText     String?
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+
+  @@index([stationId, createdAt])
 }

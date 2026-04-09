@@ -1,9 +1,8 @@
 import { isSuperAdmin } from "../constants/roles.js";
-import { stationHasAllFeatures } from "../lib/featureService.js";
+import { userHasAllStationFeatures } from "../lib/permissions.js";
 
 /**
- * Controleert of de zender (effectiveStationId) alle opgegeven features heeft.
- * Super admins slaan we over (kunnen alles bedienen).
+ * Controleert station-features én (voor staff) gebruikersrechten.
  */
 export function requireStationFeatures(...keys) {
   return async (req, res, next) => {
@@ -14,19 +13,16 @@ export function requireStationFeatures(...keys) {
     if (!stationId) {
       return res.status(400).json({ error: "Geen zender in deze context." });
     }
-    const ok = await stationHasAllFeatures(stationId, keys);
+    const ok = await userHasAllStationFeatures(req.user, stationId, keys);
     if (!ok) {
       return res.status(403).json({
-        error: `Deze functie staat uit voor deze zender (${keys.join(", ")}).`,
+        error: `Geen toegang tot deze functie (${keys.join(", ")}).`,
       });
     }
     next();
   };
 }
 
-/**
- * Voor routes zonder effectiveStationId (bv. users-API): gebruik user.stationId.
- */
 export function requireUserStationFeature(featureKey) {
   return async (req, res, next) => {
     if (isSuperAdmin(req.user)) {
@@ -36,10 +32,10 @@ export function requireUserStationFeature(featureKey) {
     if (!stationId) {
       return res.status(403).json({ error: "Geen zender gekoppeld." });
     }
-    const ok = await stationHasAllFeatures(stationId, [featureKey]);
+    const ok = await userHasAllStationFeatures(req.user, stationId, [featureKey]);
     if (!ok) {
       return res.status(403).json({
-        error: `Functie '${featureKey}' staat uit voor deze zender.`,
+        error: `Geen toegang tot '${featureKey}' voor dit account.`,
       });
     }
     next();

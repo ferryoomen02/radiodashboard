@@ -11,15 +11,39 @@ if (!canAccessUsers(auth.user?.role)) {
 }
 
 const isSuper = auth.user?.role === "SUPER_ADMIN";
+const isStationAdminUser = auth.user?.role === "STATION_ADMIN";
+
+/** Opties voor staff-rechten (geen super-only modules). */
+const PERM_OPTIONS = [
+  { key: "dashboard", label: "Dashboard" },
+  { key: "tracks", label: "Tracks & playlist" },
+  { key: "media", label: "Media" },
+  { key: "users", label: "Gebruikers" },
+  { key: "files", label: "Bestanden" },
+  { key: "djs", label: "DJ's" },
+  { key: "audiologger", label: "Audiologger" },
+  { key: "site_settings", label: "Site-instellingen" },
+];
+
 const tbody = document.getElementById("users-tbody");
 const alertEl = document.getElementById("users-alert");
 const roleWrap = document.getElementById("nu-role-wrap");
 const stationWrap = document.getElementById("nu-station-wrap");
+const permsWrap = document.getElementById("nu-perms-wrap");
+const permsGrid = document.getElementById("nu-perms-grid");
 const hintSa = document.getElementById("nu-hint-station-admin");
 const form = document.getElementById("form-new-user");
 const msg = document.getElementById("nu-msg");
 const selRole = document.getElementById("nu-role");
 const selStation = document.getElementById("nu-station");
+
+const editDialog = document.getElementById("edit-perm-dialog");
+const editForm = document.getElementById("edit-perm-form");
+const editPermGrid = document.getElementById("edit-perm-grid");
+const editPermEmail = document.getElementById("edit-perm-email");
+
+let editingUserId = null;
+let lastUsers = [];
 
 if (isSuper) {
   roleWrap.hidden = false;
@@ -43,11 +67,34 @@ function hideAlert() {
   alertEl.hidden = true;
 }
 
+function renderPermCheckboxes(container, namePrefix, selected = []) {
+  const set = new Set(selected);
+  container.innerHTML = PERM_OPTIONS.map(
+    (p) => `
+    <label>
+      <input type="checkbox" name="${namePrefix}" value="${escapeHtml(p.key)}" ${set.has(p.key) ? "checked" : ""} />
+      ${escapeHtml(p.label)}
+    </label>
+  `
+  ).join("");
+}
+
+function getCheckedPermissions(container, namePrefix) {
+  return Array.from(container.querySelectorAll(`input[name="${namePrefix}"]:checked`)).map((el) => el.value);
+}
+
 function toggleStationField() {
   if (!isSuper) return;
   const r = selRole.value;
-  const need = r === "STATION_ADMIN" || r === "USER";
-  stationWrap.hidden = !need;
+  const needStation = r === "STATION_ADMIN" || r === "STAFF";
+  stationWrap.hidden = !needStation;
+  permsWrap.hidden = r !== "STAFF";
+}
+
+function togglePermsForStationAdmin() {
+  if (isStationAdminUser) {
+    permsWrap.hidden = false;
+  }
 }
 
 selRole.addEventListener("change", toggleStationField);
@@ -65,7 +112,7 @@ async function loadStationsForSelect() {
 
 async function loadUsers() {
   hideAlert();
-  tbody.innerHTML = `<tr><td colspan="4" class="loading-shimmer">Laden…</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="6" class="loading-shimmer">Laden…</td></tr>`;
   const res = await apiFetch("/api/users");
   if (handleAuthFailure(res)) return;
   if (!res.ok) {
@@ -75,23 +122,71 @@ async function loadUsers() {
     return;
   }
   const { users } = await res.json();
+  lastUsers = users || [];
   if (!users?.length) {
-    tbody.innerHTML = `<tr><td colspan="4" class="empty-state">Nog geen gebruikers.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="empty-state">Nog geen gebruikers.</td></tr>`;
     return;
   }
   tbody.innerHTML = users
-    .map(
-      (u) => `
-    <tr>
+    .map((u) => {
+      const perms = Array.isArray(u.permissions) ? u.permissions.join(", ") || "—" : "—";
+      const canEdit =
+        u.role === "STAFF" && (isSuper || (isStationAdminUser && u.station?.id === auth.station?.id));
+      return `
+    <tr data-id="${escapeHtml(u.id)}" data-role="${escapeHtml(u.role)}">
       <td>${escapeHtml(u.name)}</td>
       <td>${escapeHtml(u.email)}</td>
       <td><span class="role-pill">${escapeHtml(roleLabelNl(u.role))}</span></td>
       <td>${u.station ? escapeHtml(u.station.name) : "—"}</td>
+      <td style="font-size:0.8rem;max-width:12rem;word-break:break-word">${escapeHtml(perms)}</td>
+      <td>${
+        canEdit
+          ? `<button type="button" class="btn-secondary btn-edit-perm" data-id="${escapeHtml(u.id)}">Rechten</button>`
+          : "—"
+      }</td>
     </tr>
-  `
-    )
+  `;
+    })
     .join("");
+
+  tbody.querySelectorAll(".btn-edit-perm").forEach((btn) => {
+    btn.addEventListener("click", () => openEditDialog(btn.getAttribute("data-id")));
+  });
 }
+
+function openEditDialog(userId) {
+  const u = lastUsers.find((x) => x.id === userId);
+  if (!u || u.role !== "STAFF") return;
+  editingUserId = userId;
+  editPermEmail.textContent = u.email;
+  renderPermCheckboxes(editPermGrid, "edit-perm", Array.isArray(u.permissions) ? u.permissions : []);
+  editDialog.showModal();
+}
+
+document.getElementById("edit-perm-cancel")?.addEventListener("click", () => editDialog.close());
+
+editForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!editingUserId) return;
+  const permissions = getCheckedPermissions(editPermGrid, "edit-perm");
+  if (permissions.length === 0) {
+    alert("Kies minimaal één recht.");
+    return;
+  }
+  const res = await apiFetch(`/api/users/${encodeURIComponent(editingUserId)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ permissions }),
+  });
+  if (handleAuthFailure(res)) return;
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    alert(err.error || "Opslaan mislukt.");
+    return;
+  }
+  editDialog.close();
+  await loadUsers();
+});
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -104,7 +199,7 @@ form.addEventListener("submit", async (e) => {
 
   if (isSuper) {
     body.role = selRole.value;
-    if (body.role === "STATION_ADMIN" || body.role === "USER") {
+    if (body.role === "STATION_ADMIN" || body.role === "STAFF") {
       body.stationId = selStation.value || null;
       if (!body.stationId) {
         msg.hidden = false;
@@ -112,6 +207,25 @@ form.addEventListener("submit", async (e) => {
         msg.textContent = "Kies een zender voor deze rol.";
         return;
       }
+    }
+    if (body.role === "STAFF") {
+      body.permissions = getCheckedPermissions(permsGrid, "nu-perm");
+      if (body.permissions.length === 0) {
+        msg.hidden = false;
+        msg.className = "alert alert-error";
+        msg.textContent = "Kies minimaal één recht voor medewerkers.";
+        return;
+      }
+    }
+  }
+
+  if (isStationAdminUser) {
+    body.permissions = getCheckedPermissions(permsGrid, "nu-perm");
+    if (body.permissions.length === 0) {
+      msg.hidden = false;
+      msg.className = "alert alert-error";
+      msg.textContent = "Kies minimaal één recht.";
+      return;
     }
   }
 
@@ -145,6 +259,9 @@ form.addEventListener("submit", async (e) => {
     window.location.href = "/account";
     return;
   }
+  renderPermCheckboxes(permsGrid, "nu-perm", []);
   await loadStationsForSelect();
+  toggleStationField();
+  togglePermsForStationAdmin();
   await loadUsers();
 })();

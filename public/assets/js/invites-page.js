@@ -22,6 +22,11 @@ function escapeHtml(s) {
   return d.innerHTML;
 }
 
+function statusNl(s) {
+  const m = { PENDING: "Openstaand", ACCEPTED: "Geaccepteerd", EXPIRED: "Verlopen" };
+  return m[s] || s;
+}
+
 function showAlert(t) {
   alertEl.hidden = false;
   alertEl.textContent = t;
@@ -29,7 +34,7 @@ function showAlert(t) {
 
 async function loadInvites() {
   alertEl.hidden = true;
-  tbody.innerHTML = `<tr><td colspan="3" class="loading-shimmer">Laden…</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="5" class="loading-shimmer">Laden…</td></tr>`;
   const res = await apiFetch("/api/invites");
   if (handleAuthFailure(res)) return;
   if (!res.ok) {
@@ -41,7 +46,7 @@ async function loadInvites() {
   const data = await res.json();
   const rows = data.invites || [];
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="3" class="empty-state">Geen openstaande uitnodigingen.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" class="empty-state">Nog geen uitnodigingen.</td></tr>`;
     return;
   }
   tbody.innerHTML = rows
@@ -50,7 +55,9 @@ async function loadInvites() {
     <tr>
       <td>${escapeHtml(r.email)}</td>
       <td>${escapeHtml(r.role)}</td>
+      <td>${escapeHtml(statusNl(r.status))}</td>
       <td>${escapeHtml(new Date(r.expiresAt).toLocaleString("nl-NL"))}</td>
+      <td>${r.emailSentAt ? escapeHtml(new Date(r.emailSentAt).toLocaleString("nl-NL")) : "—"}</td>
     </tr>`
     )
     .join("");
@@ -81,7 +88,8 @@ form.addEventListener("submit", async (e) => {
   msg.style.background = "var(--color-accent-soft)";
   msg.style.color = "var(--color-accent-hover)";
   const link = data.inviteUrl || "";
-  msg.innerHTML = `Uitnodiging aangemaakt. Deel deze link met de ontvanger:<br/><code style="word-break:break-all;font-size:0.85rem">${escapeHtml(link)}</code>${data.hint ? `<br/><span style="font-size:0.85rem">${escapeHtml(data.hint)}</span>` : ""}`;
+  const sent = data.emailSent ? "Verzonden per e-mail." : "E-mail niet geconfigureerd — gebruik de link hieronder.";
+  msg.innerHTML = `${escapeHtml(sent)}<br/><code style="word-break:break-all;font-size:0.85rem">${escapeHtml(link)}</code>${data.hint ? `<br/><span style="font-size:0.85rem">${escapeHtml(data.hint)}</span>` : ""}`;
   await loadInvites();
 });
 

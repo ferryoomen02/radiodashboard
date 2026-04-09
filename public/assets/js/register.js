@@ -13,7 +13,6 @@ function show(el, on) {
 const subtitle = document.getElementById("invite-subtitle");
 const invalid = document.getElementById("invite-invalid");
 const form = document.getElementById("register-form");
-const emailEl = document.getElementById("invite-email");
 const err = document.getElementById("register-error");
 
 const token = qs("token");
@@ -36,7 +35,10 @@ async function main() {
   }
 
   subtitle.textContent = "Stel je wachtwoord in om je account te voltooien.";
-  emailEl.textContent = data.email || "—";
+  const emailInput = document.getElementById("reg-email");
+  if (emailInput) {
+    emailInput.value = data.email || "";
+  }
   show(form, true);
 
   form.addEventListener("submit", async (e) => {

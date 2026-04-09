@@ -14,6 +14,10 @@ const isSuper = auth.user?.role === "SUPER_ADMIN";
 const tbody = document.getElementById("stations-tbody");
 const theadRow = document.getElementById("stations-thead-row");
 const alertEl = document.getElementById("stations-alert");
+const assignCard = document.getElementById("stations-assign-admin");
+const formAssign = document.getElementById("form-assign-admin");
+const assignStation = document.getElementById("assign-station");
+const assignMsg = document.getElementById("assign-msg");
 const superCreate = document.getElementById("stations-super-create");
 const formNew = document.getElementById("form-new-station");
 const newMsg = document.getElementById("new-station-msg");
@@ -21,6 +25,7 @@ const titleEl = document.getElementById("stations-page-title");
 
 if (isSuper) {
   superCreate.hidden = false;
+  assignCard.hidden = false;
   titleEl.textContent = "Zenders";
 } else {
   titleEl.textContent = "Zenderinstellingen";
@@ -132,6 +137,45 @@ formNew.addEventListener("submit", async (e) => {
   newMsg.style.color = "var(--color-accent-hover)";
   newMsg.textContent = "Zender aangemaakt.";
   await loadStations();
+  await fillAssignStations();
+});
+
+async function fillAssignStations() {
+  if (!isSuper || !assignStation) return;
+  const res = await apiFetch("/api/stations");
+  if (!res.ok) return;
+  const { stations } = await res.json();
+  assignStation.innerHTML = (stations || [])
+    .map((s) => `<option value="${escapeHtml(s.id)}">${escapeHtml(s.name)}</option>`)
+    .join("");
+}
+
+formAssign.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  assignMsg.hidden = true;
+  const email = document.getElementById("assign-email").value.trim().toLowerCase();
+  const stationId = assignStation.value;
+  if (!email || !stationId) return;
+  const res = await apiFetch("/api/stations/assign-admin", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, stationId }),
+  });
+  if (handleAuthFailure(res)) return;
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    assignMsg.hidden = false;
+    assignMsg.className = "alert alert-error";
+    assignMsg.textContent = data.error || "Koppelen mislukt.";
+    return;
+  }
+  formAssign.reset();
+  assignMsg.hidden = false;
+  assignMsg.className = "alert";
+  assignMsg.style.background = "var(--color-accent-soft)";
+  assignMsg.textContent = data.message || "Station admin gekoppeld.";
+  await fillAssignStations();
+  await loadStations();
 });
 
 async function boot() {
@@ -146,6 +190,7 @@ async function boot() {
     th.textContent = "Functies";
     theadRow.insertBefore(th, lastTh);
   }
+  await fillAssignStations();
   await loadStations();
 }
 

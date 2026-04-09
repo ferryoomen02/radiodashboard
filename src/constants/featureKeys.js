@@ -12,6 +12,7 @@ export const FEATURE_KEYS = {
   AUDIOLOGGER: "audiologger",
   FILES: "files",
   SITE_SETTINGS: "site_settings",
+  MEDIA: "media",
 };
 
 /** Standaard bij nieuwe zender: alles aan. */
@@ -28,4 +29,5 @@ export const FEATURE_LABELS = {
   [FEATURE_KEYS.AUDIOLOGGER]: "Audiologger",
   [FEATURE_KEYS.FILES]: "Bestanden (verkeer)",
   [FEATURE_KEYS.SITE_SETTINGS]: "Site-instellingen",
+  [FEATURE_KEYS.MEDIA]: "Media",
 };

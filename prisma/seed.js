@@ -14,6 +14,7 @@ const BUILTIN_FEATURES = [
   { key: "audiologger", label: "Audiologger", description: "Audiologger (module)" },
   { key: "files", label: "Bestanden (verkeer)", description: "Verkeersinformatie / bestanden" },
   { key: "site_settings", label: "Site-instellingen", description: "Site-instellingen per zender" },
+  { key: "media", label: "Media", description: "Afbeeldingen en mediabibliotheek" },
 ];
 
 async function seedFeatureDefinitions() {
@@ -52,6 +53,7 @@ async function main() {
         data: {
           role: "SUPER_ADMIN",
           stationId: null,
+          permissions: [],
           name: name || existing.name,
         },
       });
@@ -69,6 +71,7 @@ async function main() {
       passwordHash: hash,
       role: "SUPER_ADMIN",
       stationId: null,
+      permissions: [],
     },
   });
   console.log("Super admin aangemaakt:", email);

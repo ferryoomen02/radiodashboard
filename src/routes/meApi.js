@@ -1,17 +1,17 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/requireAuth.js";
-import { isSuperAdmin } from "../constants/roles.js";
+import { isSuperAdmin, isStationAdmin } from "../constants/roles.js";
 import { DEFAULT_STATION_FEATURES, FEATURE_LABELS } from "../constants/featureKeys.js";
 import { normalizeEnabledFeatures } from "../lib/featureService.js";
+import { normalizePermissions } from "../lib/permissions.js";
 import { asyncHandler } from "../asyncHandler.js";
 
 export const meRouter = Router();
 meRouter.use(requireAuth);
 
 /**
- * Welke feature-keys staan aan voor de gekozen zender (sidebar + client guards).
- * Query stationId: verplicht voor super admin; anderen gebruiken eigen stationId.
+ * Effectieve feature-keys voor sidebar: station-modules doorsneden met gebruikersrechten (staff).
  */
 meRouter.get(
   "/active-features",
@@ -51,7 +51,13 @@ meRouter.get(
       return res.status(404).json({ error: "Zender niet gevonden." });
     }
 
-    const enabledKeys = normalizeEnabledFeatures(station.enabledFeatures);
+    let enabledKeys = normalizeEnabledFeatures(station.enabledFeatures);
+
+    if (!isSuperAdmin(req.user) && !isStationAdmin(req.user)) {
+      const perms = normalizePermissions(req.user.permissions);
+      enabledKeys = enabledKeys.filter((k) => perms.includes(k));
+    }
+
     const defs = await prisma.featureDefinition.findMany({ orderBy: { key: "asc" } });
 
     const labelByKey = { ...FEATURE_LABELS };

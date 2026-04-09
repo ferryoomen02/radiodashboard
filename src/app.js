@@ -9,6 +9,7 @@ import { usersRouter } from "./routes/usersApi.js";
 import { meRouter } from "./routes/meApi.js";
 import { featureDefinitionsRouter } from "./routes/featureDefinitionsApi.js";
 import { invitesRouter } from "./routes/invitesApi.js";
+import { mediaRouter } from "./routes/mediaApi.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicRoot = path.join(__dirname, "..", "public");
@@ -53,6 +54,7 @@ app.get("/djs", sendPage("djs.html"));
 app.get("/audiologger", sendPage("audiologger.html"));
 app.get("/files", sendPage("files.html"));
 app.get("/site-settings", sendPage("site-settings.html"));
+app.get("/media", sendPage("media.html"));
 
 app.get("/login-test", (_req, res) => {
   res.redirect(302, "/login");
@@ -62,6 +64,7 @@ app.use("/auth", authRouter);
 app.use("/api", meRouter);
 app.use("/api/feature-definitions", featureDefinitionsRouter);
 app.use("/api/invites", invitesRouter);
+app.use("/api/media", mediaRouter);
 app.use("/api/stations", stationsRouter);
 app.use("/api/users", usersRouter);
 app.use("/", radioRouter);

@@ -6,6 +6,7 @@ import { signToken } from "../authTokens.js";
 import { asyncHandler } from "../asyncHandler.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { Role } from "../constants/roles.js";
+import { normalizePermissions } from "../lib/permissions.js";
 
 export const authRouter = Router();
 
@@ -21,6 +22,7 @@ function userPayload(user) {
     name: user.name,
     email: user.email,
     role: user.role,
+    permissions: normalizePermissions(user.permissions),
   };
 }
 
@@ -82,10 +84,14 @@ authRouter.get(
     }
     const tokenHash = hashInviteToken(token);
     const row = await prisma.inviteToken.findUnique({ where: { tokenHash } });
-    if (!row || row.usedAt) {
+    if (!row || row.status !== "PENDING") {
       return res.json({ valid: false, error: "Ongeldige of gebruikte uitnodiging." });
     }
     if (row.expiresAt < new Date()) {
+      await prisma.inviteToken.update({
+        where: { id: row.id },
+        data: { status: "EXPIRED" },
+      });
       return res.json({ valid: false, error: "Uitnodiging verlopen." });
     }
     return res.json({
@@ -113,10 +119,14 @@ authRouter.post(
 
     const tokenHash = hashInviteToken(token);
     const invite = await prisma.inviteToken.findUnique({ where: { tokenHash } });
-    if (!invite || invite.usedAt) {
+    if (!invite || invite.status !== "PENDING") {
       return res.status(400).json({ error: "Ongeldige of gebruikte uitnodiging." });
     }
     if (invite.expiresAt < new Date()) {
+      await prisma.inviteToken.update({
+        where: { id: invite.id },
+        data: { status: "EXPIRED" },
+      });
       return res.status(400).json({ error: "Uitnodiging verlopen." });
     }
 
@@ -130,7 +140,10 @@ authRouter.post(
     const user = await prisma.$transaction(async (tx) => {
       await tx.inviteToken.update({
         where: { id: invite.id },
-        data: { usedAt: new Date() },
+        data: {
+          status: "ACCEPTED",
+          usedAt: new Date(),
+        },
       });
       return tx.user.create({
         data: {
@@ -139,6 +152,7 @@ authRouter.post(
           passwordHash,
           role: invite.role,
           stationId: null,
+          permissions: [],
         },
         include: { station: true },
       });

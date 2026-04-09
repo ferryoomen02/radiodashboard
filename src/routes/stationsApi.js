@@ -84,6 +84,39 @@ stationsRouter.post(
   })
 );
 
+/** Bestaande gebruiker (e-mail) als station admin aan een zender koppelen. */
+stationsRouter.post(
+  "/assign-admin",
+  requireRoles(Role.SUPER_ADMIN),
+  asyncHandler(async (req, res) => {
+    const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
+    const stationId = typeof req.body?.stationId === "string" ? req.body.stationId.trim() : "";
+    if (!email || !stationId) {
+      return res.status(400).json({ error: "E-mail en stationId zijn verplicht." });
+    }
+    const station = await prisma.station.findUnique({ where: { id: stationId } });
+    if (!station) {
+      return res.status(404).json({ error: "Zender niet gevonden." });
+    }
+    const target = await prisma.user.findUnique({ where: { email } });
+    if (!target) {
+      return res.status(404).json({ error: "Geen gebruiker met dit e-mailadres." });
+    }
+    if (target.role === Role.SUPER_ADMIN) {
+      return res.status(400).json({ error: "Kan geen super admin als station admin koppelen." });
+    }
+    await prisma.user.update({
+      where: { id: target.id },
+      data: {
+        role: Role.STATION_ADMIN,
+        stationId,
+        permissions: [],
+      },
+    });
+    return res.json({ ok: true, message: "Station admin gekoppeld." });
+  })
+);
+
 stationsRouter.get(
   "/:id/features",
   asyncHandler(async (req, res) => {

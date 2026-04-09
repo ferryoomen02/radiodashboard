@@ -18,7 +18,7 @@
       <div class="main-wrap">
         <header class="main-header">
           <h1 class="page-title">Gebruikers</h1>
-          <p class="header-date">Accounts voor jouw organisatie</p>
+          <p class="header-date">Accounts en rechten voor jouw organisatie</p>
         </header>
         <main class="main-content">
           <div class="form-card">
@@ -41,7 +41,7 @@
               <div id="nu-role-wrap" class="form-group" hidden>
                 <label class="form-label" for="nu-role">Rol</label>
                 <select class="input-field" id="nu-role" style="max-width: 24rem">
-                  <option value="USER">Gebruiker</option>
+                  <option value="STAFF">Medewerker (staff)</option>
                   <option value="STATION_ADMIN">Station admin</option>
                   <option value="SUPER_ADMIN">Super admin</option>
                 </select>
@@ -50,8 +50,12 @@
                 <label class="form-label" for="nu-station">Zender</label>
                 <select class="input-field" id="nu-station" style="max-width: 24rem"></select>
               </div>
+              <div id="nu-perms-wrap" class="form-group" hidden>
+                <span class="form-label">Rechten (modules)</span>
+                <div id="nu-perms-grid" class="perm-grid"></div>
+              </div>
               <p id="nu-hint-station-admin" class="empty-state" style="margin: 0 0 0.75rem" hidden>
-                Nieuwe gebruikers krijgen de rol <strong>Gebruiker</strong> en jouw zender.
+                Nieuwe gebruikers krijgen de rol <strong>Medewerker</strong> op jouw zender. Vink rechten aan.
               </p>
               <button type="submit" class="btn btn-primary" style="width: auto">Gebruiker aanmaken</button>
               <div id="nu-msg" class="alert" style="margin-top: 1rem" hidden role="status"></div>
@@ -66,6 +70,8 @@
                   <th>E-mail</th>
                   <th>Rol</th>
                   <th>Zender</th>
+                  <th>Rechten</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody id="users-tbody"></tbody>
@@ -74,6 +80,19 @@
         </main>
       </div>
     </div>
+
+    <dialog id="edit-perm-dialog" class="perm-dialog">
+      <form id="edit-perm-form">
+        <h2 class="card-title" style="margin-top: 0">Rechten bewerken</h2>
+        <p class="empty-state" id="edit-perm-email" style="margin-bottom: 1rem"></p>
+        <div id="edit-perm-grid" class="perm-grid"></div>
+        <div class="form-row-2" style="margin-top: 1rem">
+          <button type="submit" class="btn btn-primary" style="width: auto">Opslaan</button>
+          <button type="button" class="btn-secondary" style="width: auto" id="edit-perm-cancel">Annuleren</button>
+        </div>
+      </form>
+    </dialog>
+
     <script type="module" src="/assets/js/sidebar.js"></script>
     <script type="module" src="/assets/js/users-page.js"></script>
   </body>

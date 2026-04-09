@@ -1,9 +1,9 @@
-/** @typedef {'SUPER_ADMIN' | 'STATION_ADMIN' | 'USER'} Role */
+/** @typedef {'SUPER_ADMIN' | 'STATION_ADMIN' | 'STAFF'} Role */
 
 export const Role = {
   SUPER_ADMIN: "SUPER_ADMIN",
   STATION_ADMIN: "STATION_ADMIN",
-  USER: "USER",
+  STAFF: "STAFF",
 };
 
 export function isSuperAdmin(user) {
@@ -14,6 +14,6 @@ export function isStationAdmin(user) {
   return user?.role === Role.STATION_ADMIN;
 }
 
-export function isUserRole(user) {
-  return user?.role === Role.USER;
+export function isStaff(user) {
+  return user?.role === Role.STAFF;
 }

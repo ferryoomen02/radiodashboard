@@ -71,7 +71,7 @@ export function roleLabelNl(role) {
   const m = {
     SUPER_ADMIN: "Super admin",
     STATION_ADMIN: "Station admin",
-    USER: "Gebruiker",
+    STAFF: "Medewerker",
   };
   if (role == null || role === "") return "—";
   return m[role] || String(role);
