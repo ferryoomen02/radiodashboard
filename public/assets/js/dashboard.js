@@ -12,6 +12,7 @@ import { fetchActiveFeatures, clearActiveFeaturesCache } from "./portal-features
 import { refreshAuthProfile } from "./auth-refresh.js";
 import { getActiveStationIdForApi, setActiveStationId } from "./portal-station.js";
 import { swLog, swLogRedirect } from "./portal-debug.js";
+import { redirectNoModuleAccess, logAuthRouting } from "./portal-routing.js";
 
 const bootAuth = getAuth();
 if (!bootAuth?.token) {
@@ -241,10 +242,17 @@ if (!bootAuth?.token) {
         return;
       }
 
-      const featState = await fetchActiveFeatures(true);
+      const featState = await fetchActiveFeatures(true, {
+        role: a.user?.role,
+        from: "dashboard.loadDashboard",
+      });
       if (!isSuperAdminRole(a.user?.role)) {
         if (featState && !featState.enabledKeys.has("dashboard")) {
-          window.location.href = "/account";
+          logAuthRouting("geen dashboard-feature (niet-super)", {
+            enabledKeys: [...(featState.enabledKeys || [])],
+            chosenRedirect: "/dashboard",
+          });
+          redirectNoModuleAccess("dashboard: station/permissies hebben geen dashboard-module");
           return;
         }
       }

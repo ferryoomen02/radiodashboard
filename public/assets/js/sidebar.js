@@ -93,7 +93,10 @@ export async function mountSidebar() {
   root.classList.add("sidebar--loading");
   root.innerHTML = sidebarShell(stationLine, role, true);
 
-  const feats = await fetchActiveFeatures(true);
+  const feats = await fetchActiveFeatures(true, {
+    role: auth.user?.role,
+    from: "sidebar.mountSidebar",
+  });
   let enabled = feats?.enabledKeys ?? new Set();
   const current = document.body.dataset.page || "";
 

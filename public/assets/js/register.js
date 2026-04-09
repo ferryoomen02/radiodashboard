@@ -1,4 +1,7 @@
-import { setAuth } from "./portal-auth.js";
+import { setAuth, getAuth } from "./portal-auth.js";
+import { clearActiveFeaturesCache } from "./portal-features.js";
+import { refreshAuthProfile } from "./auth-refresh.js";
+import { logAuthRouting } from "./portal-routing.js";
 
 function qs(name) {
   const u = new URL(window.location.href);
@@ -69,6 +72,9 @@ async function main() {
       user: body.user,
       station: body.station ?? null,
     });
+    clearActiveFeaturesCache();
+    await refreshAuthProfile();
+    logAuthRouting("register-invite", { role: getAuth()?.user?.role });
     window.location.href = "/dashboard";
   });
 }

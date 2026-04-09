@@ -1,5 +1,8 @@
 import { setAuth, getAuth, displayNameFromEmail } from "./portal-auth.js";
-import { swLog, swLogRedirect } from "./portal-debug.js";
+import { swLog, swLogRedirect, SONICWAVE_DEBUG } from "./portal-debug.js";
+import { clearActiveFeaturesCache } from "./portal-features.js";
+import { refreshAuthProfile } from "./auth-refresh.js";
+import { logAuthRouting } from "./portal-routing.js";
 
 const form = document.getElementById("login-form");
 const errorEl = document.getElementById("login-error");
@@ -11,22 +14,13 @@ async function tryRedirectIfLoggedIn() {
     swLog("login", "tryRedirect: geen token in localStorage, blijf op loginpagina");
     return;
   }
-  swLog("login", "tryRedirect: token aanwezig, GET /auth/me …");
-  const t0 = typeof performance !== "undefined" ? performance.now() : 0;
-  try {
-    const res = await fetch("/auth/me", {
-      headers: { Authorization: `Bearer ${auth.token}` },
-    });
-    const ms = typeof performance !== "undefined" ? Math.round(performance.now() - t0) : "?";
-    swLog("login", `/auth/me status ${res.status}`, `(${ms}ms)`);
-    if (res.ok) {
-      swLogRedirect("/dashboard", "tryRedirect: /auth/me OK");
-      window.location.href = "/dashboard";
-    } else {
-      swLog("login", "tryRedirect: /auth/me niet OK, blijf op login (geen redirect)");
-    }
-  } catch (err) {
-    swLog("login", "tryRedirect: FETCH GEFAALD (hangt vaak hier bij verkeerde API-URL/CORS)", String(err));
+  swLog("login", "tryRedirect: token aanwezig, refreshAuthProfile …");
+  clearActiveFeaturesCache();
+  await refreshAuthProfile();
+  logAuthRouting("tryRedirectIfLoggedIn", { role: getAuth()?.user?.role });
+  if (getAuth()?.token) {
+    swLogRedirect("/dashboard", "tryRedirect: nog ingelogd → /dashboard");
+    window.location.href = "/dashboard";
   }
 }
 
@@ -72,12 +66,24 @@ form.addEventListener("submit", async (e) => {
       user: data.user,
       station: data.station,
     });
+    clearActiveFeaturesCache();
 
+    const refreshed = await refreshAuthProfile();
+    logAuthRouting("login-submit", {
+      roleFromLogin: data.user?.role,
+      roleAfterRefresh: getAuth()?.user?.role,
+      refreshOk: Boolean(refreshed),
+    });
+    if (!refreshed && SONICWAVE_DEBUG) {
+      console.warn("[SonicWave auth] refresh na login mislukt — gebruik login-response in storage");
+    }
+
+    const ga = getAuth();
     const display =
-      (data.user?.name && data.user.name.trim()) || displayNameFromEmail(data.user?.email);
+      (ga?.user?.name && ga.user.name.trim()) || displayNameFromEmail(ga?.user?.email ?? data.user?.email);
     sessionStorage.setItem("portalDisplayName", display);
 
-    swLogRedirect("/dashboard", "login formulier succes");
+    swLogRedirect("/dashboard", "login formulier succes (na refreshAuthProfile)");
     window.location.href = "/dashboard";
   } catch (err) {
     swLog("login", "submit: netwerkfout", String(err));

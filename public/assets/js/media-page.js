@@ -2,6 +2,7 @@ import { getAuth, isSuperAdminRole } from "./portal-auth.js";
 import { apiFetch, handleAuthFailure, withStationQuery } from "./portal-api.js";
 import { fetchActiveFeatures } from "./portal-features.js";
 import { refreshAuthProfile } from "./auth-refresh.js";
+import { redirectNoModuleAccess } from "./portal-routing.js";
 import { getActiveStationIdForApi, setActiveStationId } from "./portal-station.js";
 
 let auth = getAuth();
@@ -202,9 +203,12 @@ form.addEventListener("submit", async (e) => {
   auth = getAuth();
   isSuper = isSuperAdminRole(auth?.user?.role);
   if (!isSuper) {
-    const feats = await fetchActiveFeatures(true);
+    const feats = await fetchActiveFeatures(true, {
+      role: auth?.user?.role,
+      from: "media-page",
+    });
     if (!feats?.enabledKeys?.has("media")) {
-      window.location.href = "/account";
+      redirectNoModuleAccess("media: geen media-module");
       return;
     }
   }

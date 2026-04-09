@@ -1,5 +1,6 @@
 import { getAuth, isSuperAdminRole } from "./portal-auth.js";
 import { refreshAuthProfile } from "./auth-refresh.js";
+import { redirectNoModuleAccess } from "./portal-routing.js";
 import { apiFetch, handleAuthFailure } from "./portal-api.js";
 import { fetchActiveFeatures } from "./portal-features.js";
 
@@ -202,9 +203,12 @@ formDef.addEventListener("submit", async (e) => {
     window.location.href = "/dashboard";
     return;
   }
-  const feats = await fetchActiveFeatures(true);
+  const feats = await fetchActiveFeatures(true, {
+    role: auth.user?.role,
+    from: "station-features-page",
+  });
   if (!feats?.enabledKeys?.has("stations")) {
-    window.location.href = "/account";
+    redirectNoModuleAccess("station-features: geen stations-module in features");
     return;
   }
 

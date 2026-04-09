@@ -25,13 +25,16 @@ export function clearActiveFeaturesCache() {
 /**
  * Ingeladen feature-keys voor de actieve zender (sidebar + paginachecks).
  * Super zonder gekozen zender: API geeft volledige standaardlijst.
+ *
+ * @param {boolean} force
+ * @param {{ role?: string, from?: string }} [opts] — `role` = bron van waarheid (bijv. net na /auth/me); voorkomt dat oude localStorage-rol de API-call verkeerd laat lopen.
  */
-export async function fetchActiveFeatures(force = false) {
+export async function fetchActiveFeatures(force = false, opts = {}) {
   if (cache && !force) return cache;
   const auth = getAuth();
   if (!auth?.token) return null;
 
-  const role = auth.user?.role;
+  const role = opts.role ?? auth.user?.role;
   const stationId =
     role === "SUPER_ADMIN"
       ? sessionStorage.getItem("sonicwaveActiveStationId")
@@ -44,6 +47,9 @@ export async function fetchActiveFeatures(force = false) {
   const res = await apiFetch(url);
   if (handleAuthFailure(res)) return null;
   if (!res.ok) {
+    if (opts.from && typeof console !== "undefined" && console.debug) {
+      console.debug("[SonicWave features] active-features niet OK", { from: opts.from, status: res.status, role });
+    }
     const fallbackKeys =
       role === "SUPER_ADMIN" ? [...SUPER_NAV_FALLBACK_KEYS] : [];
     cache = {

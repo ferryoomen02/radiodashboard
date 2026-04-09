@@ -2,6 +2,7 @@ import { getAuth, canAccessUsers, roleLabelNl, isSuperAdminRole } from "./portal
 import { apiFetch, handleAuthFailure } from "./portal-api.js";
 import { fetchActiveFeatures } from "./portal-features.js";
 import { refreshAuthProfile } from "./auth-refresh.js";
+import { redirectNoModuleAccess } from "./portal-routing.js";
 
 let auth = null;
 let isSuper = false;
@@ -273,9 +274,12 @@ form.addEventListener("submit", async (e) => {
   applyRoleUi();
 
   if (!isSuperAdminRole(auth.user?.role)) {
-    const feats = await fetchActiveFeatures(true);
+    const feats = await fetchActiveFeatures(true, {
+      role: auth.user?.role,
+      from: "users-page",
+    });
     if (!feats?.enabledKeys?.has("users")) {
-      window.location.href = "/account";
+      redirectNoModuleAccess("users: geen users-module voor deze rol/station");
       return;
     }
   }

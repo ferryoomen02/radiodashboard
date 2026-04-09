@@ -2,6 +2,7 @@ import { getAuth, canAccessStations, isSuperAdminRole } from "./portal-auth.js";
 import { apiFetch, handleAuthFailure } from "./portal-api.js";
 import { fetchActiveFeatures } from "./portal-features.js";
 import { refreshAuthProfile } from "./auth-refresh.js";
+import { redirectNoModuleAccess } from "./portal-routing.js";
 
 let auth = getAuth();
 if (!auth?.token) {
@@ -194,9 +195,12 @@ async function boot() {
 
   const me = auth;
   if (!isSuperAdminRole(me?.user?.role)) {
-    const feats = await fetchActiveFeatures(true);
+    const feats = await fetchActiveFeatures(true, {
+      role: me?.user?.role,
+      from: "stations-page",
+    });
     if (!feats?.enabledKeys?.has("stations")) {
-      window.location.href = "/account";
+      redirectNoModuleAccess("stations: geen stations-module");
       return;
     }
   }
