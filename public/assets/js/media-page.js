@@ -1,7 +1,6 @@
 import { getAuth, isSuperAdminRole } from "./portal-auth.js";
 import { apiFetch, handleAuthFailure, withStationQuery } from "./portal-api.js";
-import { fetchActiveFeatures } from "./portal-features.js";
-import { refreshAuthProfile } from "./auth-refresh.js";
+import { ensurePageSession } from "./portal-session.js";
 import { redirectNoModuleAccess } from "./portal-routing.js";
 import { getActiveStationIdForApi, setActiveStationId } from "./portal-station.js";
 
@@ -199,14 +198,11 @@ form.addEventListener("submit", async (e) => {
 });
 
 (async () => {
-  await refreshAuthProfile();
-  auth = getAuth();
+  const session = await ensurePageSession();
+  auth = session.auth || getAuth();
   isSuper = isSuperAdminRole(auth?.user?.role);
   if (!isSuper) {
-    const feats = await fetchActiveFeatures(true, {
-      role: auth?.user?.role,
-      from: "media-page",
-    });
+    const feats = session.features;
     if (!feats?.enabledKeys?.has("media")) {
       redirectNoModuleAccess("media: geen media-module");
       return;

@@ -8,10 +8,9 @@ import {
   isSuperAdminRole,
 } from "./portal-auth.js";
 import { apiFetch, handleAuthFailure, withStationQuery } from "./portal-api.js";
-import { fetchActiveFeatures, clearActiveFeaturesCache } from "./portal-features.js";
-import { refreshAuthProfile } from "./auth-refresh.js";
+import { ensurePageSession, invalidatePageSession } from "./portal-session.js";
 import { getActiveStationIdForApi, setActiveStationId } from "./portal-station.js";
-import { swLog, swLogRedirect } from "./portal-debug.js";
+import { swLog, swLogRedirect, SONICWAVE_DEBUG } from "./portal-debug.js";
 import { redirectNoModuleAccess, logAuthRouting } from "./portal-routing.js";
 
 const bootAuth = getAuth();
@@ -20,6 +19,10 @@ if (!bootAuth?.token) {
   swLogRedirect("/login", "dashboard.js zonder token");
   window.location.href = "/login";
 } else {
+  if (typeof window !== "undefined" && SONICWAVE_DEBUG) {
+    window.__swDashboardModuleInits = (window.__swDashboardModuleInits || 0) + 1;
+    console.debug("[SonicWave dashboard] module init", { count: window.__swDashboardModuleInits });
+  }
   /** Leest body één keer; voorkomt vastlopen als de server HTML of gebroken JSON terugstuurt. */
   async function parseResponseJson(res) {
     const raw = await res.text();
@@ -214,7 +217,7 @@ if (!bootAuth?.token) {
 
     els.superSelect.onchange = () => {
       setActiveStationId(els.superSelect.value);
-      clearActiveFeaturesCache();
+      invalidatePageSession("actieve zender gewijzigd");
       swLog("dashboard", "actieve zender gewijzigd", els.superSelect.value);
       loadDashboard();
     };
@@ -224,8 +227,14 @@ if (!bootAuth?.token) {
 
   async function loadDashboard() {
     try {
+      if (typeof window !== "undefined") {
+        window.__swDashboardLoads = (window.__swDashboardLoads || 0) + 1;
+        if (window.__swDashboardLoads === 1) {
+          document.body.classList.add("dashboard--hydrating");
+        }
+      }
+
       const raw = getAuth();
-      console.log("[SonicWave debug] token in localStorage:", Boolean(raw?.token), raw?.token ? `(${String(raw.token).slice(0, 16)}…)` : "");
 
       if (!raw?.token) {
         swLog("dashboard", "loadDashboard: token weg → /login");
@@ -234,18 +243,22 @@ if (!bootAuth?.token) {
         return;
       }
 
-      let a = await refreshAuthProfile();
-      if (!a) {
+      let session = await ensurePageSession();
+      let a = session.auth;
+      if (!a?.token) {
         a = await syncUserFromServer(raw.token);
+        if (!a) {
+          return;
+        }
+        invalidatePageSession("dashboard syncUserFromServer");
+        session = await ensurePageSession();
+        a = session.auth;
       }
-      if (!a) {
+      if (!a?.token) {
         return;
       }
 
-      const featState = await fetchActiveFeatures(true, {
-        role: a.user?.role,
-        from: "dashboard.loadDashboard",
-      });
+      const featState = session.features;
       if (!isSuperAdminRole(a.user?.role)) {
         if (featState && !featState.enabledKeys.has("dashboard")) {
           logAuthRouting("geen dashboard-feature (niet-super)", {
@@ -350,6 +363,10 @@ if (!bootAuth?.token) {
         "Fout in dashboard",
         err?.message || String(err)
       );
+    } finally {
+      if (typeof document !== "undefined") {
+        document.body.classList.remove("dashboard--hydrating");
+      }
     }
   }
 

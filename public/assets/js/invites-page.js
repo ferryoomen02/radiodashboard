@@ -1,6 +1,6 @@
 import { getAuth, isSuperAdminRole } from "./portal-auth.js";
 import { apiFetch, handleAuthFailure } from "./portal-api.js";
-import { refreshAuthProfile } from "./auth-refresh.js";
+import { ensurePageSession } from "./portal-session.js";
 
 if (!getAuth()?.token) {
   window.location.href = "/login";
@@ -90,8 +90,8 @@ form.addEventListener("submit", async (e) => {
 });
 
 (async () => {
-  await refreshAuthProfile();
-  const auth = getAuth();
+  const session = await ensurePageSession();
+  const auth = session.auth || getAuth();
   if (!auth?.token) {
     window.location.href = "/login";
     return;

@@ -1,8 +1,7 @@
 import { getAuth, isSuperAdminRole } from "./portal-auth.js";
-import { refreshAuthProfile } from "./auth-refresh.js";
+import { ensurePageSession } from "./portal-session.js";
 import { redirectNoModuleAccess } from "./portal-routing.js";
 import { apiFetch, handleAuthFailure } from "./portal-api.js";
-import { fetchActiveFeatures } from "./portal-features.js";
 
 if (!getAuth()?.token) {
   window.location.href = "/login";
@@ -193,8 +192,8 @@ formDef.addEventListener("submit", async (e) => {
 });
 
 (async () => {
-  await refreshAuthProfile();
-  const auth = getAuth();
+  const session = await ensurePageSession();
+  const auth = session.auth || getAuth();
   if (!auth?.token) {
     window.location.href = "/login";
     return;
@@ -203,10 +202,7 @@ formDef.addEventListener("submit", async (e) => {
     window.location.href = "/dashboard";
     return;
   }
-  const feats = await fetchActiveFeatures(true, {
-    role: auth.user?.role,
-    from: "station-features-page",
-  });
+  const feats = session.features;
   if (!feats?.enabledKeys?.has("stations")) {
     redirectNoModuleAccess("station-features: geen stations-module in features");
     return;

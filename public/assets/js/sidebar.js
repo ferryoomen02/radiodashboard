@@ -1,6 +1,6 @@
 import { getAuth, clearAuth, canAccessStations, canAccessUsers, roleLabelNl } from "./portal-auth.js";
-import { refreshAuthProfile } from "./auth-refresh.js";
-import { fetchActiveFeatures, SUPER_NAV_FALLBACK_KEYS } from "./portal-features.js";
+import { SUPER_NAV_FALLBACK_KEYS } from "./portal-features.js";
+import { ensurePageSession } from "./portal-session.js";
 import { SONICWAVE_DEBUG } from "./portal-debug.js";
 import { swLog, swLogRedirect } from "./portal-debug.js";
 
@@ -88,6 +88,12 @@ export async function mountSidebar() {
 }
 
 async function mountSidebarBody(root) {
+  if (typeof window !== "undefined") {
+    window.__swSidebarMounts = (window.__swSidebarMounts || 0) + 1;
+    if (SONICWAVE_DEBUG) {
+      console.debug("[SonicWave sidebar] mountSidebarBody start", { count: window.__swSidebarMounts });
+    }
+  }
 
   let auth = getAuth();
   if (!auth?.token) {
@@ -97,14 +103,12 @@ async function mountSidebarBody(root) {
     return;
   }
 
-  const refreshed = await refreshAuthProfile();
-  auth = refreshed || getAuth();
+  const session = await ensurePageSession();
+  auth = session.auth || getAuth();
   if (!auth?.token) {
     return;
   }
-  if (refreshed) {
-    swLog("sidebar", "profiel gesynchroniseerd met server", { role: auth.user?.role });
-  }
+  swLog("sidebar", "sessie geladen (gedeeld met pagina)", { role: auth.user?.role });
 
   const role = auth.user?.role;
   const stationLine =
@@ -112,10 +116,7 @@ async function mountSidebarBody(root) {
       ? "Alle zenders"
       : auth.station?.name || "Geen zender";
 
-  const feats = await fetchActiveFeatures(true, {
-    role: auth.user?.role,
-    from: "sidebar.mountSidebar",
-  });
+  const feats = session.features;
   let enabled = feats?.enabledKeys ?? new Set();
   const current = document.body.dataset.page || "";
 
@@ -194,10 +195,8 @@ async function mountSidebarBody(root) {
   nav += navItem("/account", "Mijn account", iconAccount, "account", current);
   nav += mutedItem("Studio (binnenkort)", iconStation);
 
-  root.classList.add("sidebar--loading");
   root.innerHTML = sidebarShellWithNav(stationLine, role, nav);
   root.dataset.sidebarMounted = "1";
-  root.classList.remove("sidebar--loading");
   root.classList.add("sidebar--ready");
 
   if (SONICWAVE_DEBUG) {
@@ -227,6 +226,11 @@ function escapeHtml(s) {
 
 async function init() {
   await mountSidebar();
+}
+
+if (typeof window !== "undefined" && SONICWAVE_DEBUG) {
+  window.__swSidebarModuleInits = (window.__swSidebarModuleInits || 0) + 1;
+  console.debug("[SonicWave sidebar] module geladen", { count: window.__swSidebarModuleInits });
 }
 
 if (document.readyState === "loading") {

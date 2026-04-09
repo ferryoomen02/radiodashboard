@@ -1,7 +1,6 @@
 import { getAuth, canAccessStations, isSuperAdminRole } from "./portal-auth.js";
 import { apiFetch, handleAuthFailure } from "./portal-api.js";
-import { fetchActiveFeatures } from "./portal-features.js";
-import { refreshAuthProfile } from "./auth-refresh.js";
+import { ensurePageSession } from "./portal-session.js";
 import { redirectNoModuleAccess } from "./portal-routing.js";
 
 let auth = getAuth();
@@ -181,8 +180,8 @@ formAssign.addEventListener("submit", async (e) => {
 });
 
 async function boot() {
-  await refreshAuthProfile();
-  auth = getAuth();
+  const session = await ensurePageSession();
+  auth = session.auth || getAuth();
   if (!auth?.token) {
     window.location.href = "/login";
     return;
@@ -195,10 +194,7 @@ async function boot() {
 
   const me = auth;
   if (!isSuperAdminRole(me?.user?.role)) {
-    const feats = await fetchActiveFeatures(true, {
-      role: me?.user?.role,
-      from: "stations-page",
-    });
+    const feats = session.features;
     if (!feats?.enabledKeys?.has("stations")) {
       redirectNoModuleAccess("stations: geen stations-module");
       return;

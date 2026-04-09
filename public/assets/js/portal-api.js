@@ -1,6 +1,8 @@
 import { getAuth, clearAuth } from "./portal-auth.js";
 import { swLog, swLogRedirect, SONICWAVE_DEBUG } from "./portal-debug.js";
 
+let swFetchSeq = 0;
+
 export async function apiFetch(path, options = {}) {
   const auth = getAuth();
   const headers = {
@@ -16,6 +18,8 @@ export async function apiFetch(path, options = {}) {
 
   const method = options.method || "GET";
   if (SONICWAVE_DEBUG) {
+    swFetchSeq += 1;
+    console.debug("[SonicWave fetch]", `#${swFetchSeq}`, method, path, { hasAuth: Boolean(auth?.token) });
     swLog("fetch", "start", { method, path, hasAuth: Boolean(auth?.token) });
   }
   const t0 = typeof performance !== "undefined" ? performance.now() : 0;

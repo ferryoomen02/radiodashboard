@@ -1,6 +1,5 @@
 import { getAuth, isSuperAdminRole } from "./portal-auth.js";
-import { fetchActiveFeatures } from "./portal-features.js";
-import { refreshAuthProfile } from "./auth-refresh.js";
+import { ensurePageSession } from "./portal-session.js";
 import { redirectNoModuleAccess } from "./portal-routing.js";
 
 const key = document.body.dataset.featureKey;
@@ -9,8 +8,8 @@ if (!key) {
 }
 
 (async () => {
-  await refreshAuthProfile();
-  const auth = getAuth();
+  const session = await ensurePageSession();
+  const auth = session.auth || getAuth();
   if (!auth?.token) {
     window.location.href = "/login";
     return;
@@ -18,10 +17,7 @@ if (!key) {
   if (isSuperAdminRole(auth.user?.role)) {
     return;
   }
-  const feats = await fetchActiveFeatures(true, {
-    role: auth.user?.role,
-    from: "feature-placeholder",
-  });
+  const feats = session.features;
   if (!feats?.enabledKeys?.has(key)) {
     redirectNoModuleAccess(`placeholder: geen module ${key}`);
   }

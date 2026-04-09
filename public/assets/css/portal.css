@@ -194,6 +194,35 @@ body {
   min-height: 100vh;
 }
 
+/* Tot JS klaar is: vaste breedte, geen lege inklap; subtiele placeholder (geen layout-shift) */
+.sidebar:not(.sidebar--ready) {
+  position: relative;
+}
+.sidebar:not(.sidebar--ready)::after {
+  content: "";
+  display: block;
+  margin: 0.75rem 1.25rem 0;
+  height: 160px;
+  border-radius: 10px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0.06) 100%
+  );
+  background-size: 200% 100%;
+  animation: sw-sidebar-skeleton 1.2s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes sw-sidebar-skeleton {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
 .sidebar--loading .nav-section {
   opacity: 0.65;
 }
@@ -310,6 +339,12 @@ body {
   min-width: 0;
   display: flex;
   flex-direction: column;
+}
+
+/* Eerste dashboard-load: lichte stabilisatie (geen “volledige pagina-reload”-gevoel) */
+body.dashboard--hydrating .main-content {
+  transition: opacity 0.15s ease;
+  opacity: 0.92;
 }
 
 .main-header {
