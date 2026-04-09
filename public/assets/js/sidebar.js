@@ -1,5 +1,6 @@
-import { getAuth, clearAuth, canAccessStations, canAccessUsers, roleLabelNl } from "./portal-auth.js";
-import { fetchActiveFeatures } from "./portal-features.js";
+import { getAuth, setAuth, clearAuth, canAccessStations, canAccessUsers, roleLabelNl } from "./portal-auth.js";
+import { apiFetch, handleAuthFailure } from "./portal-api.js";
+import { fetchActiveFeatures, SUPER_NAV_FALLBACK_KEYS, clearActiveFeaturesCache } from "./portal-features.js";
 import { swLog, swLogRedirect } from "./portal-debug.js";
 
 function navItem(href, label, icon, page, current) {
@@ -65,12 +66,30 @@ export async function mountSidebar() {
     return;
   }
 
-  const auth = getAuth();
+  let auth = getAuth();
   if (!auth?.token) {
     swLog("sidebar", "geen token → redirect /login");
     swLogRedirect("/login", "mountSidebar zonder token");
     window.location.href = "/login";
     return;
+  }
+
+  const meRes = await apiFetch("/auth/me");
+  if (handleAuthFailure(meRes)) {
+    return;
+  }
+  if (meRes.ok) {
+    const me = await meRes.json().catch(() => null);
+    if (me?.user) {
+      setAuth({
+        token: auth.token,
+        user: me.user,
+        station: me.station ?? null,
+      });
+      clearActiveFeaturesCache();
+      auth = getAuth();
+      swLog("sidebar", "profiel gesynchroniseerd met server", { role: me.user?.role });
+    }
   }
 
   const role = auth.user?.role;
@@ -82,11 +101,20 @@ export async function mountSidebar() {
   root.classList.add("sidebar--loading");
   root.innerHTML = sidebarShell(stationLine, role, true);
 
-  const feats = await fetchActiveFeatures();
-  const enabled = feats?.enabledKeys ?? new Set();
+  const feats = await fetchActiveFeatures(true);
+  let enabled = feats?.enabledKeys ?? new Set();
   const current = document.body.dataset.page || "";
 
-  swLog("sidebar", "mount OK", { page: current, role: auth.user?.role });
+  if (role === "SUPER_ADMIN") {
+    SUPER_NAV_FALLBACK_KEYS.forEach((k) => enabled.add(k));
+  }
+
+  swLog("sidebar", "mount OK", {
+    page: current,
+    role: auth.user?.role,
+    superAdmin: role === "SUPER_ADMIN",
+    navKeyCount: enabled.size,
+  });
 
   let nav = "";
 

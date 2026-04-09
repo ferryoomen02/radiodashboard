@@ -12,35 +12,49 @@ meRouter.use(requireAuth);
 
 /**
  * Effectieve feature-keys voor sidebar: station-modules doorsneden met gebruikersrechten (staff).
+ * Super admin krijgt altijd de volledige catalogus voor navigatie (ongeacht station.enabledFeatures),
+ * zodat beheer nooit “verdwijnt” door lege of oude JSON op een zender.
  */
 meRouter.get(
   "/active-features",
   asyncHandler(async (req, res) => {
-    let stationId = typeof req.query.stationId === "string" ? req.query.stationId.trim() : null;
+    const stationIdParam =
+      typeof req.query.stationId === "string" ? req.query.stationId.trim() : null;
+
+    const defs = await prisma.featureDefinition.findMany({ orderBy: { key: "asc" } });
+    const labelByKey = { ...FEATURE_LABELS };
+    for (const d of defs) {
+      labelByKey[d.key] = d.label;
+    }
+
     if (isSuperAdmin(req.user)) {
-      if (!stationId) {
-        const defs = await prisma.featureDefinition.findMany({ orderBy: { key: "asc" } });
-        const labelByKey = { ...FEATURE_LABELS };
-        for (const d of defs) {
-          labelByKey[d.key] = d.label;
+      let responseStationId = null;
+      if (stationIdParam) {
+        const st = await prisma.station.findUnique({
+          where: { id: stationIdParam },
+          select: { id: true },
+        });
+        if (!st) {
+          return res.status(404).json({ error: "Zender niet gevonden." });
         }
-        return res.json({
-          stationId: null,
-          enabledKeys: DEFAULT_STATION_FEATURES,
-          definitions: defs,
-          labelByKey,
-        });
+        responseStationId = st.id;
       }
-    } else {
-      stationId = req.user.stationId;
-      if (!stationId) {
-        return res.json({
-          stationId: null,
-          enabledKeys: [],
-          definitions: [],
-          labelByKey: {},
-        });
-      }
+      return res.json({
+        stationId: responseStationId,
+        enabledKeys: DEFAULT_STATION_FEATURES,
+        definitions: defs,
+        labelByKey,
+      });
+    }
+
+    const stationId = req.user.stationId;
+    if (!stationId) {
+      return res.json({
+        stationId: null,
+        enabledKeys: [],
+        definitions: [],
+        labelByKey: {},
+      });
     }
 
     const station = await prisma.station.findUnique({
@@ -53,16 +67,9 @@ meRouter.get(
 
     let enabledKeys = normalizeEnabledFeatures(station.enabledFeatures);
 
-    if (!isSuperAdmin(req.user) && !isStationAdmin(req.user)) {
+    if (!isStationAdmin(req.user)) {
       const perms = normalizePermissions(req.user.permissions);
       enabledKeys = enabledKeys.filter((k) => perms.includes(k));
-    }
-
-    const defs = await prisma.featureDefinition.findMany({ orderBy: { key: "asc" } });
-
-    const labelByKey = { ...FEATURE_LABELS };
-    for (const d of defs) {
-      labelByKey[d.key] = d.label;
     }
 
     return res.json({
