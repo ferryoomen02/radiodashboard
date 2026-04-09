@@ -7,6 +7,42 @@ export const radioRouter = Router();
 
 radioRouter.use(requireAuth);
 
+/** Overzicht van jouw station + nu speelt + laatste geschiedenis (handig voor test-UI). */
+radioRouter.get(
+  "/radio",
+  asyncHandler(async (req, res) => {
+    const station = await prisma.station.findUnique({
+      where: { id: req.stationId },
+    });
+    if (!station) {
+      return res.status(404).json({ error: "Station niet gevonden." });
+    }
+
+    let nowPlaying = null;
+    if (station.currentTrackId) {
+      nowPlaying = await prisma.track.findFirst({
+        where: { id: station.currentTrackId, stationId: req.stationId },
+      });
+    }
+
+    const history = await prisma.playHistory.findMany({
+      where: { stationId: req.stationId },
+      orderBy: { playedAt: "desc" },
+      take: 10,
+      include: { track: true },
+    });
+
+    return res.json({
+      station: { id: station.id, name: station.name },
+      nowPlaying,
+      history: history.map((h) => ({
+        playedAt: h.playedAt,
+        track: h.track,
+      })),
+    });
+  })
+);
+
 /**
  * Nieuw nummer toevoegen aan jouw station.
  * Het nieuwe nummer wordt meteen “nu speelt”.
