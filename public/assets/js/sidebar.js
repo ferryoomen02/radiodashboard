@@ -28,14 +28,15 @@ const iconFile = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" st
 const iconSettings = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
 const iconImage = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>`;
 
+/** Voorkomt dubbele parallelle mount (zeldzaam). */
+let sidebarMountInFlight = null;
+
 function labelFor(keys, key, fallback) {
   return keys.labelByKey[key] || fallback;
 }
 
-function sidebarShell(stationLine, role, navPlaceholder = true) {
-  const navContent = navPlaceholder
-    ? `<div class="nav-placeholder" style="padding:0.5rem 1.25rem;font-size:0.85rem;color:rgba(255,255,255,0.5)">Menu laden…</div>`
-    : "";
+/** Eén keer innerHTML: geen placeholder → geen dubbele paint / “flikkerend” menu. */
+function sidebarShellWithNav(stationLine, role, navInnerHtml) {
   return `
     <div class="sidebar-brand">
       <div class="logo-row">
@@ -49,7 +50,7 @@ function sidebarShell(stationLine, role, navPlaceholder = true) {
     </div>
     <nav class="nav-section" aria-label="Menu">
       <div class="nav-label">Menu · ${escapeHtml(roleLabelNl(role))}</div>
-      ${navContent}
+      ${navInnerHtml}
     </nav>
     <div class="sidebar-footer">
       <button type="button" class="nav-item sidebar-logout" id="sidebar-logout" style="width:100%;border:none;background:transparent;text-align:left;cursor:pointer;font:inherit;">
@@ -66,6 +67,27 @@ export async function mountSidebar() {
     swLog("sidebar", "mountSidebar: geen #sidebar-root (normaal op loginpagina)");
     return;
   }
+  if (root.dataset.sidebarMounted === "1") {
+    if (SONICWAVE_DEBUG) {
+      console.debug("[SonicWave sidebar] mountSidebar overgeslagen (al gemount op deze pagina)");
+    }
+    return;
+  }
+  if (sidebarMountInFlight) {
+    if (SONICWAVE_DEBUG) {
+      console.debug("[SonicWave sidebar] mountSidebar: wacht op lopende mount");
+    }
+    return sidebarMountInFlight;
+  }
+  sidebarMountInFlight = mountSidebarBody(root);
+  try {
+    await sidebarMountInFlight;
+  } finally {
+    sidebarMountInFlight = null;
+  }
+}
+
+async function mountSidebarBody(root) {
 
   let auth = getAuth();
   if (!auth?.token) {
@@ -90,9 +112,6 @@ export async function mountSidebar() {
       ? "Alle zenders"
       : auth.station?.name || "Geen zender";
 
-  root.classList.add("sidebar--loading");
-  root.innerHTML = sidebarShell(stationLine, role, true);
-
   const feats = await fetchActiveFeatures(true, {
     role: auth.user?.role,
     from: "sidebar.mountSidebar",
@@ -110,6 +129,9 @@ export async function mountSidebar() {
     superAdmin: role === "SUPER_ADMIN",
     navKeyCount: enabled.size,
   });
+  if (SONICWAVE_DEBUG) {
+    console.debug("[SonicWave sidebar] één render", { role, email: auth.user?.email, navKeyCount: enabled.size });
+  }
 
   let nav = "";
 
@@ -172,14 +194,9 @@ export async function mountSidebar() {
   nav += navItem("/account", "Mijn account", iconAccount, "account", current);
   nav += mutedItem("Studio (binnenkort)", iconStation);
 
-  const navSection = root.querySelector(".nav-section");
-  if (navSection) {
-    navSection.innerHTML = `
-      <div class="nav-label">Menu · ${escapeHtml(roleLabelNl(role))}</div>
-      ${nav}
-    `;
-  }
-
+  root.classList.add("sidebar--loading");
+  root.innerHTML = sidebarShellWithNav(stationLine, role, nav);
+  root.dataset.sidebarMounted = "1";
   root.classList.remove("sidebar--loading");
   root.classList.add("sidebar--ready");
 
@@ -200,6 +217,7 @@ export async function mountSidebar() {
     window.location.href = "/login";
   });
 }
+
 
 function escapeHtml(s) {
   const d = document.createElement("div");

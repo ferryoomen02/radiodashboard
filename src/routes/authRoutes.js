@@ -35,6 +35,7 @@ authRouter.get(
   "/me",
   requireAuth,
   asyncHandler(async (req, res) => {
+    res.setHeader("X-SonicWave-User-Role", String(req.user.role ?? ""));
     return res.json({
       user: userPayload(req.user),
       station: stationPayload(req.user),

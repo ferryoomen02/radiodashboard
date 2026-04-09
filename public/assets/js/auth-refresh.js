@@ -3,13 +3,34 @@ import { apiFetch, handleAuthFailure } from "./portal-api.js";
 import { clearActiveFeaturesCache } from "./portal-features.js";
 import { SONICWAVE_DEBUG } from "./portal-debug.js";
 
+/** Parallelle aanroepen (sidebar + dashboard) delen één /auth/me-request. */
+let refreshInFlight = null;
+
 /**
  * Huidige gebruiker ophalen van /auth/me en localStorage bijwerken.
  * Voorkomt dat een oude rol (bijv. STAFF) in localStorage blijft staan terwijl de DB SUPER_ADMIN is.
  */
 export async function refreshAuthProfile() {
+  if (refreshInFlight) {
+    if (SONICWAVE_DEBUG) {
+      console.debug("[SonicWave auth] refreshAuthProfile: dedupe — wacht op lopende request");
+    }
+    return refreshInFlight;
+  }
+  refreshInFlight = refreshAuthProfileImpl();
+  try {
+    return await refreshInFlight;
+  } finally {
+    refreshInFlight = null;
+  }
+}
+
+async function refreshAuthProfileImpl() {
   const auth = getAuth();
   if (!auth?.token) return null;
+  if (SONICWAVE_DEBUG) {
+    console.debug("[SonicWave auth] refreshAuthProfile: start GET /auth/me");
+  }
   const res = await apiFetch("/auth/me");
   if (handleAuthFailure(res)) {
     if (SONICWAVE_DEBUG) {
@@ -37,5 +58,9 @@ export async function refreshAuthProfile() {
     station: data.station ?? null,
   });
   clearActiveFeaturesCache();
-  return getAuth();
+  const out = getAuth();
+  if (SONICWAVE_DEBUG) {
+    console.debug("[SonicWave auth] refreshAuthProfile: klaar", { role: out?.user?.role, email: out?.user?.email });
+  }
+  return out;
 }

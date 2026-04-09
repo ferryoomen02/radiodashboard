@@ -1,7 +1,8 @@
 import { getAuth } from "./portal-auth.js";
 import { apiFetch, handleAuthFailure } from "./portal-api.js";
+import { SONICWAVE_DEBUG } from "./portal-debug.js";
 
-/** Minimale keys zodat super_admin-nav nooit leeg raakt (fallback bij API/cache-fout). */
+/** Minimale keys zodat super_admin-nav nooit leeg raakt (fallback bij API-fout). */
 export const SUPER_NAV_FALLBACK_KEYS = [
   "dashboard",
   "tracks",
@@ -18,6 +19,9 @@ export const SUPER_NAV_FALLBACK_KEYS = [
 /** @type {{ enabledKeys: Set<string>, labelByKey: Record<string, string>, stationId: string | null } | null} */
 let cache = null;
 
+/** Parallelle GET /api/active-features (sidebar + dashboard) → één request. */
+let featuresInFlight = null;
+
 export function clearActiveFeaturesCache() {
   cache = null;
 }
@@ -31,6 +35,21 @@ export function clearActiveFeaturesCache() {
  */
 export async function fetchActiveFeatures(force = false, opts = {}) {
   if (cache && !force) return cache;
+  if (featuresInFlight) {
+    if (SONICWAVE_DEBUG) {
+      console.debug("[SonicWave features] fetchActiveFeatures: dedupe — wacht op lopende request", opts.from);
+    }
+    return featuresInFlight;
+  }
+  featuresInFlight = fetchActiveFeaturesImpl(force, opts);
+  try {
+    return await featuresInFlight;
+  } finally {
+    featuresInFlight = null;
+  }
+}
+
+async function fetchActiveFeaturesImpl(force, opts) {
   const auth = getAuth();
   if (!auth?.token) return null;
 
@@ -72,6 +91,13 @@ export async function fetchActiveFeatures(force = false, opts = {}) {
   };
   if (role === "SUPER_ADMIN" && cache.enabledKeys.size === 0) {
     SUPER_NAV_FALLBACK_KEYS.forEach((k) => cache.enabledKeys.add(k));
+  }
+  if (SONICWAVE_DEBUG) {
+    console.debug("[SonicWave features] fetch klaar", {
+      from: opts.from,
+      role,
+      keyCount: cache.enabledKeys.size,
+    });
   }
   return cache;
 }
