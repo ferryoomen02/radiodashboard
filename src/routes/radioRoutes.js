@@ -32,8 +32,12 @@ radioRouter.get(
       include: { track: true },
     });
 
+    const trackCount = await prisma.track.count({
+      where: { stationId: req.stationId },
+    });
+
     return res.json({
-      station: { id: station.id, name: station.name },
+      station: { id: station.id, name: station.name, trackCount },
       nowPlaying,
       history: history.map((h) => ({
         playedAt: h.playedAt,
