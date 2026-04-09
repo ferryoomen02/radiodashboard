@@ -3,10 +3,17 @@ import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRoles } from "../middleware/requireRoles.js";
 import { Role, isSuperAdmin, isStationAdmin } from "../constants/roles.js";
+import { DEFAULT_STATION_FEATURES, FEATURE_LABELS } from "../constants/featureKeys.js";
+import { normalizeEnabledFeatures } from "../lib/featureService.js";
+import { requireUserStationFeature } from "../middleware/requireStationFeature.js";
 import { asyncHandler } from "../asyncHandler.js";
 
 export const stationsRouter = Router();
 stationsRouter.use(requireAuth);
+stationsRouter.use((req, res, next) => {
+  if (isSuperAdmin(req.user)) return next();
+  return requireUserStationFeature("stations")(req, res, next);
+});
 
 stationsRouter.get(
   "/",
@@ -26,6 +33,7 @@ stationsRouter.get(
           description: s.description,
           userCount: s._count.users,
           trackCount: s._count.tracks,
+          enabledFeatures: normalizeEnabledFeatures(s.enabledFeatures),
         })),
       });
     }
@@ -45,6 +53,7 @@ stationsRouter.get(
                 description: s.description,
                 userCount: s._count.users,
                 trackCount: s._count.tracks,
+                enabledFeatures: normalizeEnabledFeatures(s.enabledFeatures),
               },
             ]
           : [],
@@ -68,9 +77,66 @@ stationsRouter.post(
       data: {
         name,
         description: description || null,
+        enabledFeatures: DEFAULT_STATION_FEATURES,
       },
     });
     return res.status(201).json(station);
+  })
+);
+
+stationsRouter.get(
+  "/:id/features",
+  asyncHandler(async (req, res) => {
+    const id = req.params.id;
+    const { user } = req;
+    if (!isSuperAdmin(user) && (!isStationAdmin(user) || user.stationId !== id)) {
+      return res.status(403).json({ error: "Geen toegang." });
+    }
+    const station = await prisma.station.findUnique({
+      where: { id },
+      select: { id: true, name: true, enabledFeatures: true },
+    });
+    if (!station) {
+      return res.status(404).json({ error: "Zender niet gevonden." });
+    }
+    const enabledKeys = normalizeEnabledFeatures(station.enabledFeatures);
+    const defs = await prisma.featureDefinition.findMany({ orderBy: { key: "asc" } });
+    const labelByKey = { ...FEATURE_LABELS };
+    for (const d of defs) {
+      labelByKey[d.key] = d.label;
+    }
+    return res.json({
+      stationId: station.id,
+      stationName: station.name,
+      enabledKeys,
+      definitions: defs,
+      labelByKey,
+    });
+  })
+);
+
+stationsRouter.put(
+  "/:id/features",
+  requireRoles(Role.SUPER_ADMIN),
+  asyncHandler(async (req, res) => {
+    const id = req.params.id;
+    const keysRaw = req.body?.enabledFeatureKeys ?? req.body?.keys;
+    if (!Array.isArray(keysRaw)) {
+      return res.status(400).json({ error: "Body moet enabledFeatureKeys: string[] bevatten." });
+    }
+    const enabledFeatureKeys = keysRaw.filter((k) => typeof k === "string" && k.trim().length > 0);
+    const station = await prisma.station.findUnique({ where: { id } });
+    if (!station) {
+      return res.status(404).json({ error: "Zender niet gevonden." });
+    }
+    const updated = await prisma.station.update({
+      where: { id },
+      data: { enabledFeatures: enabledFeatureKeys },
+    });
+    return res.json({
+      id: updated.id,
+      enabledFeatures: normalizeEnabledFeatures(updated.enabledFeatures),
+    });
   })
 );
 
@@ -105,6 +171,19 @@ stationsRouter.patch(
     if (descRaw !== undefined) {
       data.description =
         typeof descRaw === "string" && descRaw.trim() ? descRaw.trim() : null;
+    }
+
+    if (req.body?.enabledFeatures !== undefined) {
+      if (!isSuperAdmin(user)) {
+        return res.status(403).json({ error: "Alleen super admins kunnen functies per zender wijzigen." });
+      }
+      const arr = Array.isArray(req.body.enabledFeatures)
+        ? req.body.enabledFeatures.filter((k) => typeof k === "string")
+        : null;
+      if (!arr) {
+        return res.status(400).json({ error: "enabledFeatures moet een array van strings zijn." });
+      }
+      data.enabledFeatures = arr;
     }
 
     if (Object.keys(data).length === 0) {

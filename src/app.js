@@ -6,6 +6,9 @@ import { authRouter } from "./routes/authRoutes.js";
 import { radioRouter } from "./routes/radioRoutes.js";
 import { stationsRouter } from "./routes/stationsApi.js";
 import { usersRouter } from "./routes/usersApi.js";
+import { meRouter } from "./routes/meApi.js";
+import { featureDefinitionsRouter } from "./routes/featureDefinitionsApi.js";
+import { invitesRouter } from "./routes/invitesApi.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicRoot = path.join(__dirname, "..", "public");
@@ -43,12 +46,22 @@ app.get("/dashboard", sendPage("dashboard.html"));
 app.get("/stations", sendPage("stations.html"));
 app.get("/users", sendPage("users.html"));
 app.get("/account", sendPage("account.html"));
+app.get("/register", sendPage("register.html"));
+app.get("/station-features", sendPage("station-features.html"));
+app.get("/invites", sendPage("invites.html"));
+app.get("/djs", sendPage("djs.html"));
+app.get("/audiologger", sendPage("audiologger.html"));
+app.get("/files", sendPage("files.html"));
+app.get("/site-settings", sendPage("site-settings.html"));
 
 app.get("/login-test", (_req, res) => {
   res.redirect(302, "/login");
 });
 
 app.use("/auth", authRouter);
+app.use("/api", meRouter);
+app.use("/api/feature-definitions", featureDefinitionsRouter);
+app.use("/api/invites", invitesRouter);
 app.use("/api/stations", stationsRouter);
 app.use("/api/users", usersRouter);
 app.use("/", radioRouter);

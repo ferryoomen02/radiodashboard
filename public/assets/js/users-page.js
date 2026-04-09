@@ -1,5 +1,6 @@
 import { getAuth, canAccessUsers, roleLabelNl } from "./portal-auth.js";
 import { apiFetch, handleAuthFailure } from "./portal-api.js";
+import { fetchActiveFeatures } from "./portal-features.js";
 
 const auth = getAuth();
 if (!auth?.token) {
@@ -139,6 +140,11 @@ form.addEventListener("submit", async (e) => {
 });
 
 (async () => {
+  const feats = await fetchActiveFeatures();
+  if (!feats?.enabledKeys?.has("users")) {
+    window.location.href = "/account";
+    return;
+  }
   await loadStationsForSelect();
   await loadUsers();
 })();

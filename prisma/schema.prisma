@@ -13,7 +13,6 @@ enum Role {
   USER
 }
 
-/// Toekomstbestendig: meerdere gebruikers per zender; super_admin zonder koppeling (alle zenders).
 model User {
   id           String    @id @default(cuid())
   name         String
@@ -29,14 +28,16 @@ model User {
   @@index([role])
 }
 
+/// Ingeschakelde functies als JSON-array van string-keys (bv. ["dashboard","tracks"]).
 model Station {
-  id             String        @id @default(cuid())
-  name           String
-  description    String?
-  currentTrackId String?
-  users          User[]
-  tracks         Track[]
-  history        PlayHistory[]
+  id              String        @id @default(cuid())
+  name            String
+  description     String?
+  currentTrackId  String?
+  enabledFeatures Json          @default("[]")
+  users           User[]
+  tracks          Track[]
+  history         PlayHistory[]
 }
 
 model Track {
@@ -61,4 +62,26 @@ model PlayHistory {
   playedAt  DateTime @default(now())
 
   @@index([stationId, playedAt])
+}
+
+/// Catalogus: vaste + door super toegevoegde feature-keys met label voor UI.
+model FeatureDefinition {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  label       String
+  description String?
+  isBuiltIn   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+/// Uitnodiging voor registratie (o.a. nieuwe super admin); token alleen als hash opgeslagen.
+model InviteToken {
+  id          String    @id @default(cuid())
+  email       String
+  tokenHash   String    @unique
+  role        Role      @default(SUPER_ADMIN)
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdById String?
+  createdAt   DateTime  @default(now())
 }

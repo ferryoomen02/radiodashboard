@@ -4,6 +4,7 @@ import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRoles } from "../middleware/requireRoles.js";
 import { Role, isSuperAdmin, isStationAdmin } from "../constants/roles.js";
+import { requireUserStationFeature } from "../middleware/requireStationFeature.js";
 import { asyncHandler } from "../asyncHandler.js";
 
 export const usersRouter = Router();
@@ -18,6 +19,10 @@ usersRouter.use((req, res, next) => {
   next();
 });
 usersRouter.use(requireRoles(Role.SUPER_ADMIN, Role.STATION_ADMIN));
+usersRouter.use((req, res, next) => {
+  if (isSuperAdmin(req.user)) return next();
+  return requireUserStationFeature("users")(req, res, next);
+});
 
 const userSelect = {
   id: true,

@@ -1,5 +1,6 @@
 import { getAuth, canAccessStations } from "./portal-auth.js";
 import { apiFetch, handleAuthFailure } from "./portal-api.js";
+import { fetchActiveFeatures } from "./portal-features.js";
 
 const auth = getAuth();
 if (!auth?.token) {
@@ -11,6 +12,7 @@ if (!canAccessStations(auth.user?.role)) {
 
 const isSuper = auth.user?.role === "SUPER_ADMIN";
 const tbody = document.getElementById("stations-tbody");
+const theadRow = document.getElementById("stations-thead-row");
 const alertEl = document.getElementById("stations-alert");
 const superCreate = document.getElementById("stations-super-create");
 const formNew = document.getElementById("form-new-station");
@@ -40,9 +42,11 @@ function hideAlert() {
   alertEl.hidden = true;
 }
 
+const colCount = () => (isSuper ? 6 : 5);
+
 async function loadStations() {
   hideAlert();
-  tbody.innerHTML = `<tr><td colspan="5" class="loading-shimmer">Laden…</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="${colCount()}" class="loading-shimmer">Laden…</td></tr>`;
   const res = await apiFetch("/api/stations");
   if (handleAuthFailure(res)) return;
   if (!res.ok) {
@@ -53,7 +57,7 @@ async function loadStations() {
   }
   const { stations } = await res.json();
   if (!stations?.length) {
-    tbody.innerHTML = `<tr><td colspan="5" class="empty-state">Nog geen zenders.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="${colCount()}" class="empty-state">Nog geen zenders.</td></tr>`;
     return;
   }
   tbody.innerHTML = stations
@@ -64,6 +68,11 @@ async function loadStations() {
       <td><input class="input-field" data-field="description" value="${escapeHtml(s.description || "")}" placeholder="—" /></td>
       <td>${s.userCount ?? "—"}</td>
       <td>${s.trackCount ?? "—"}</td>
+      ${
+        isSuper
+          ? `<td><a class="btn-secondary" style="display:inline-block;text-decoration:none;padding:0.35rem 0.75rem" href="/station-features?stationId=${encodeURIComponent(s.id)}">Functies</a></td>`
+          : ""
+      }
       <td><button type="button" class="btn-secondary btn-save-station">Opslaan</button></td>
     </tr>
   `
@@ -125,4 +134,19 @@ formNew.addEventListener("submit", async (e) => {
   await loadStations();
 });
 
-loadStations();
+async function boot() {
+  const feats = await fetchActiveFeatures();
+  if (!feats?.enabledKeys?.has("stations")) {
+    window.location.href = "/account";
+    return;
+  }
+  if (isSuper && theadRow) {
+    const lastTh = theadRow.querySelector("th:last-child");
+    const th = document.createElement("th");
+    th.textContent = "Functies";
+    theadRow.insertBefore(th, lastTh);
+  }
+  await loadStations();
+}
+
+boot();

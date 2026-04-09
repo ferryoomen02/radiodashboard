@@ -7,6 +7,8 @@ import {
   enforceStationScope,
 } from "../middleware/stationContext.js";
 import { asyncHandler } from "../asyncHandler.js";
+import { FEATURE_KEYS } from "../constants/featureKeys.js";
+import { requireStationFeatures } from "../middleware/requireStationFeature.js";
 
 export const radioRouter = Router();
 
@@ -18,6 +20,7 @@ radioRouter.use(enforceStationScope);
 /** Overzicht van gekozen station + nu speelt + geschiedenis */
 radioRouter.get(
   "/radio",
+  requireStationFeatures(FEATURE_KEYS.DASHBOARD),
   asyncHandler(async (req, res) => {
     const stationId = req.effectiveStationId;
 
@@ -64,6 +67,7 @@ radioRouter.get(
 
 radioRouter.post(
   "/tracks",
+  requireStationFeatures(FEATURE_KEYS.TRACKS),
   asyncHandler(async (req, res) => {
     const artist = typeof req.body?.artist === "string" ? req.body.artist.trim() : "";
     const title = typeof req.body?.title === "string" ? req.body.title.trim() : "";
@@ -119,6 +123,7 @@ radioRouter.post(
 
 radioRouter.get(
   "/now-playing",
+  requireStationFeatures(FEATURE_KEYS.DASHBOARD),
   asyncHandler(async (req, res) => {
     const stationId = req.effectiveStationId;
     const station = await prisma.station.findUnique({
@@ -139,6 +144,7 @@ radioRouter.get(
 
 radioRouter.get(
   "/playlist",
+  requireStationFeatures(FEATURE_KEYS.DASHBOARD),
   asyncHandler(async (req, res) => {
     const stationId = req.effectiveStationId;
     let limit = parseInt(String(req.query.limit ?? "20"), 10);

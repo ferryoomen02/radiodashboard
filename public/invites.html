@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="nl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Uitnodigingen — SonicWave</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/assets/css/portal.css" />
+  </head>
+  <body data-page="invites">
+    <div class="dashboard">
+      <aside id="sidebar-root" class="sidebar" aria-label="Hoofdnavigatie"></aside>
+      <div class="main-wrap">
+        <header class="main-header">
+          <h1 class="page-title">Uitnodigingen</h1>
+          <p class="header-date">Nodig een nieuwe super admin uit (registratie via eigen link)</p>
+        </header>
+        <main class="main-content">
+          <div class="form-card" style="max-width: 36rem">
+            <h2 class="card-title" style="margin-top: 0">Nieuwe uitnodiging</h2>
+            <form id="form-invite" class="add-track-form">
+              <div class="form-group">
+                <label class="form-label" for="invite-email">E-mailadres</label>
+                <input
+                  class="input-field"
+                  id="invite-email"
+                  type="email"
+                  required
+                  autocomplete="off"
+                  placeholder="collega@voorbeeld.nl"
+                />
+              </div>
+              <button type="submit" class="btn btn-primary" style="width: auto">Uitnodiging aanmaken</button>
+              <div id="invite-msg" class="alert" style="margin-top: 1rem" hidden role="status"></div>
+            </form>
+          </div>
+          <div class="form-card" style="margin-top: 1.5rem">
+            <h2 class="card-title" style="margin-top: 0">Open uitnodigingen</h2>
+            <div id="invites-alert" class="alert alert-error" hidden role="alert"></div>
+            <div class="data-table-wrap">
+              <table class="data-table" aria-label="Openstaande uitnodigingen">
+                <thead>
+                  <tr>
+                    <th>E-mail</th>
+                    <th>Rol</th>
+                    <th>Verloopt</th>
+                  </tr>
+                </thead>
+                <tbody id="invites-tbody">
+                  <tr>
+                    <td colspan="3" class="loading-shimmer">Laden…</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+    <script type="module" src="/assets/js/sidebar.js"></script>
+    <script type="module" src="/assets/js/invites-page.js"></script>
+  </body>
+</html>

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="nl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Account aanmaken — SonicWave</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/assets/css/portal.css" />
+  </head>
+  <body>
+    <div class="login-page">
+      <div class="login-card" style="max-width: 26rem">
+        <div class="brand-mark" aria-hidden="true">S</div>
+        <h1>Account aanmaken</h1>
+        <p class="login-subtitle" id="invite-subtitle">Controleer je uitnodiging…</p>
+
+        <div id="invite-invalid" class="alert alert-error" hidden role="alert"></div>
+
+        <form id="register-form" class="add-track-form" hidden novalidate>
+          <p class="empty-state" style="margin: 0 0 1rem; font-size: 0.9rem">
+            Je wordt geregistreerd als <strong id="invite-email"></strong>
+          </p>
+          <div class="form-group">
+            <label class="form-label" for="reg-name">Je naam</label>
+            <input class="input-field" id="reg-name" name="name" required autocomplete="name" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="reg-password">Kies een wachtwoord</label>
+            <input
+              class="input-field"
+              id="reg-password"
+              name="password"
+              type="password"
+              required
+              minlength="6"
+              autocomplete="new-password"
+            />
+          </div>
+          <div id="register-error" class="alert alert-error" hidden role="alert"></div>
+          <button type="submit" class="btn btn-primary" id="register-submit">Account aanmaken</button>
+        </form>
+
+        <p style="margin-top: 1.5rem; font-size: 0.85rem">
+          <a href="/login" style="color: var(--color-accent-hover)">← Terug naar inloggen</a>
+        </p>
+      </div>
+      <p class="login-footer">Alleen met geldige uitnodiging</p>
+    </div>
+    <script type="module" src="/assets/js/register.js"></script>
+  </body>
+</html>

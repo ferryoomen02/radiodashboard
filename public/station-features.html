@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="nl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Zenderfuncties — SonicWave</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/assets/css/portal.css" />
+  </head>
+  <body data-page="station-features">
+    <div class="dashboard">
+      <aside id="sidebar-root" class="sidebar" aria-label="Hoofdnavigatie"></aside>
+      <div class="main-wrap">
+        <header class="main-header">
+          <h1 class="page-title">Zenderfuncties</h1>
+          <p class="header-date">Schakel functies per zender in of uit (alleen super admin)</p>
+        </header>
+        <main class="main-content">
+          <div class="form-card" style="max-width: 40rem">
+            <div class="form-group">
+              <label class="form-label" for="sf-station">Zender</label>
+              <select class="input-field" id="sf-station" aria-label="Kies zender"></select>
+            </div>
+            <div id="sf-alert" class="alert alert-error" hidden role="alert"></div>
+            <div id="sf-features" class="sf-check-grid"></div>
+            <button type="button" class="btn btn-primary" id="sf-save" style="margin-top: 1rem">Opslaan</button>
+          </div>
+
+          <div class="form-card" style="max-width: 40rem; margin-top: 1.5rem">
+            <h2 class="card-title" style="margin-top: 0">Feature-catalogus</h2>
+            <p class="empty-state" style="margin: 0 0 1rem; font-size: 0.9rem">
+              Voeg een eigen feature-key toe (verschijnt daarna in de lijst hierboven). Ingebouwde keys kun je niet
+              verwijderen.
+            </p>
+            <form id="sf-new-def" class="add-track-form">
+              <div class="form-row-2">
+                <div class="form-group" style="margin-bottom: 0">
+                  <label class="form-label" for="sf-new-key">Key (slug)</label>
+                  <input class="input-field" id="sf-new-key" placeholder="bijv. promo_tool" autocomplete="off" />
+                </div>
+                <div class="form-group" style="margin-bottom: 0">
+                  <label class="form-label" for="sf-new-label">Label</label>
+                  <input class="input-field" id="sf-new-label" placeholder="Weergavenaam" autocomplete="off" />
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="sf-new-desc">Omschrijving (optioneel)</label>
+                <input class="input-field" id="sf-new-desc" autocomplete="off" />
+              </div>
+              <button type="submit" class="btn btn-secondary" style="width: auto">Feature toevoegen</button>
+              <div id="sf-def-msg" class="alert" style="margin-top: 1rem" hidden role="status"></div>
+            </form>
+            <div class="data-table-wrap" style="margin-top: 1rem">
+              <table class="data-table" aria-label="Eigen features">
+                <thead>
+                  <tr>
+                    <th>Key</th>
+                    <th>Label</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="sf-def-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+    <script type="module" src="/assets/js/sidebar.js"></script>
+    <script type="module" src="/assets/js/station-features-page.js"></script>
+  </body>
+</html>

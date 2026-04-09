@@ -7,6 +7,7 @@ import {
   roleLabelNl,
 } from "./portal-auth.js";
 import { apiFetch, handleAuthFailure, withStationQuery } from "./portal-api.js";
+import { fetchActiveFeatures, clearActiveFeaturesCache } from "./portal-features.js";
 import { getActiveStationIdForApi, setActiveStationId } from "./portal-station.js";
 import { swLog, swLogRedirect } from "./portal-debug.js";
 
@@ -49,6 +50,7 @@ if (!bootAuth?.token) {
     addForm: document.getElementById("add-track-form"),
     addError: document.getElementById("add-track-error"),
     addSuccess: document.getElementById("add-track-success"),
+    addTrackSection: document.getElementById("add-track-form")?.closest("section") ?? null,
   };
 
   function formatPlayedAt(iso) {
@@ -209,6 +211,7 @@ if (!bootAuth?.token) {
 
     els.superSelect.onchange = () => {
       setActiveStationId(els.superSelect.value);
+      clearActiveFeaturesCache();
       swLog("dashboard", "actieve zender gewijzigd", els.superSelect.value);
       loadDashboard();
     };
@@ -218,6 +221,12 @@ if (!bootAuth?.token) {
 
   async function loadDashboard() {
     try {
+      const featState = await fetchActiveFeatures();
+      if (featState && !featState.enabledKeys.has("dashboard")) {
+        window.location.href = "/account";
+        return;
+      }
+
       const raw = getAuth();
       console.log("[SonicWave debug] token in localStorage:", Boolean(raw?.token), raw?.token ? `(${String(raw.token).slice(0, 16)}…)` : "");
 
@@ -316,6 +325,9 @@ if (!bootAuth?.token) {
       const hist = Array.isArray(data.history) ? data.history : [];
       renderNowPlaying(data.nowPlaying ?? null, hist);
       renderHistory(hist);
+      if (els.addTrackSection && featState) {
+        els.addTrackSection.hidden = !featState.enabledKeys.has("tracks");
+      }
       swLog("dashboard", "loadDashboard: klaar");
     } catch (err) {
       console.error("[SonicWave debug] loadDashboard exception:", err);
