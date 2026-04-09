@@ -202,13 +202,13 @@ body {
   content: "";
   display: block;
   margin: 0.75rem 1.25rem 0;
-  height: 160px;
+  height: 11.5rem;
   border-radius: 10px;
   background: linear-gradient(
     90deg,
-    rgba(255, 255, 255, 0.06) 0%,
-    rgba(255, 255, 255, 0.12) 50%,
-    rgba(255, 255, 255, 0.06) 100%
+    rgba(255, 255, 255, 0.035) 0%,
+    rgba(255, 255, 255, 0.065) 50%,
+    rgba(255, 255, 255, 0.035) 100%
   );
   background-size: 200% 100%;
   animation: sw-sidebar-skeleton 1.2s ease-in-out infinite;
@@ -232,70 +232,110 @@ body {
 }
 
 .sidebar-brand {
-  padding: 0 1.25rem 1.5rem;
+  padding: 0 1.25rem 1.35rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  min-height: 11.5rem;
+  box-sizing: border-box;
 }
 
-.sidebar-brand .logo-row {
+/* Vaste hoogte logo-rail: geen layout shift bij laden */
+.sidebar-brand-inner {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.sidebar-logo-slot {
+  min-height: 3.75rem;
   display: flex;
   align-items: center;
-  gap: 0.65rem;
-  min-width: 0;
+  box-sizing: border-box;
 }
 
 .sidebar-logo-wrap {
-  flex-shrink: 0;
-  width: 100%;
-  max-width: 11rem;
-  height: 2.75rem;
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.06);
-  overflow: hidden;
-  padding: 0.2rem 0.35rem;
+  width: 100%;
+  max-width: 100%;
+  padding: 0.5rem 0.65rem;
+  margin: 0;
   box-sizing: border-box;
+  background: transparent;
+  border-radius: 8px;
 }
 
 .sidebar-logo-img {
   display: block;
-  max-width: 100%;
-  max-height: 100%;
+  max-height: 46px;
   width: auto;
+  max-width: 100%;
   height: auto;
   object-fit: contain;
   object-position: left center;
 }
 
-.sidebar-brand .brand-mark {
-  margin: 0;
-  width: 40px;
-  height: 40px;
-  font-size: 1.1rem;
+.sidebar-brand-fallback {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
   border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  background: transparent;
+  border: 1px solid rgba(218, 46, 32, 0.28);
 }
 
-.sidebar-brand .brand-text strong {
-  display: block;
+.sidebar-brand-fallback-letter {
   font-size: 1.05rem;
   font-weight: 700;
+  color: var(--color-accent);
+  line-height: 1;
+}
+
+.sidebar-brand-meta {
+  margin-top: 0.6rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sidebar-brand-name {
+  display: block;
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
   letter-spacing: 0.02em;
+  color: #fff;
+  line-height: 1.3;
 }
 
-.sidebar-brand .brand-text span {
-  font-size: 0.65rem;
-  letter-spacing: 0.18em;
+.sidebar-brand-subtitle {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  opacity: 0.75;
+  color: rgba(255, 255, 255, 0.52);
+  line-height: 1.35;
 }
 
-.sidebar-context {
-  margin: 0.75rem 0 0;
-  font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.55);
+/* Zenderregel (bv. "Alle zenders"): zelfde hiërarchie als subtitel, geen extra scheiding */
+.sidebar-brand-station {
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: none;
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(218, 46, 32, 0.88);
   line-height: 1.35;
-  padding: 0 0.25rem;
 }
 
 .sidebar-logout:hover {

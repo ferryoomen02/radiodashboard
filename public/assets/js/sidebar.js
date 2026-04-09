@@ -43,17 +43,17 @@ function sidebarShellWithNav(branding, stationLine, role, navInnerHtml) {
   const initial = escapeHtml((branding.platformName || "S").slice(0, 1).toUpperCase());
   const logoOrMark = branding.logoUrl
     ? `<div class="sidebar-logo-wrap"><img src="${escapeHtml(branding.logoUrl)}" alt="" class="sidebar-logo-img" loading="lazy" decoding="async" /></div>`
-    : `<div class="brand-mark" aria-hidden="true">${initial}</div>`;
+    : `<div class="sidebar-brand-fallback" aria-hidden="true"><span class="sidebar-brand-fallback-letter">${initial}</span></div>`;
   return `
     <div class="sidebar-brand">
-      <div class="logo-row">
-        ${logoOrMark}
-        <div class="brand-text">
-          <strong id="sidebar-brand-title">${platformTitle}</strong>
-          <span>${platformSub}</span>
+      <div class="sidebar-brand-inner">
+        <div class="sidebar-logo-slot">${logoOrMark}</div>
+        <div class="sidebar-brand-meta">
+          <strong class="sidebar-brand-name" id="sidebar-brand-title">${platformTitle}</strong>
+          <span class="sidebar-brand-subtitle">${platformSub}</span>
+          <span class="sidebar-brand-station" id="sidebar-context-line">${escapeHtml(stationLine)}</span>
         </div>
       </div>
-      <p class="sidebar-context" id="sidebar-context-line">${escapeHtml(stationLine)}</p>
     </div>
     <nav class="nav-section" aria-label="Menu">
       <div class="nav-label">Menu · ${escapeHtml(roleLabelNl(role))}</div>
