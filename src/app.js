@@ -4,6 +4,8 @@ import express from "express";
 import cors from "cors";
 import { authRouter } from "./routes/authRoutes.js";
 import { radioRouter } from "./routes/radioRoutes.js";
+import { stationsRouter } from "./routes/stationsApi.js";
+import { usersRouter } from "./routes/usersApi.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicRoot = path.join(__dirname, "..", "public");
@@ -29,22 +31,26 @@ app.get("/", (_req, res) => {
   res.redirect(302, "/login");
 });
 
-app.get("/login", (_req, res) => {
-  res.type("html");
-  res.sendFile(path.join(publicRoot, "login.html"));
-});
+function sendPage(name) {
+  return (_req, res) => {
+    res.type("html");
+    res.sendFile(path.join(publicRoot, name));
+  };
+}
 
-app.get("/dashboard", (_req, res) => {
-  res.type("html");
-  res.sendFile(path.join(publicRoot, "dashboard.html"));
-});
+app.get("/login", sendPage("login.html"));
+app.get("/dashboard", sendPage("dashboard.html"));
+app.get("/stations", sendPage("stations.html"));
+app.get("/users", sendPage("users.html"));
+app.get("/account", sendPage("account.html"));
 
-/** Oude test-URL → nieuwe loginpagina */
 app.get("/login-test", (_req, res) => {
   res.redirect(302, "/login");
 });
 
 app.use("/auth", authRouter);
+app.use("/api/stations", stationsRouter);
+app.use("/api/users", usersRouter);
 app.use("/", radioRouter);
 
 app.use((err, _req, res, _next) => {

@@ -225,6 +225,19 @@ body {
   opacity: 0.75;
 }
 
+.sidebar-context {
+  margin: 0.75rem 0 0;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.55);
+  line-height: 1.35;
+  padding: 0 0.25rem;
+}
+
+.sidebar-logout:hover {
+  background: var(--color-sidebar-hover);
+  color: #fff;
+}
+
 .nav-section {
   padding: 1rem 0;
   flex: 1;
@@ -588,4 +601,111 @@ body {
 .loading-shimmer {
   color: var(--color-text-muted);
   font-size: 0.9rem;
+}
+
+.station-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding: 0.65rem 1rem;
+  background: #fff;
+  border-radius: var(--radius-input);
+  box-shadow: var(--shadow-card);
+  max-width: 28rem;
+}
+.station-bar label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.station-bar select {
+  flex: 1;
+  min-width: 0;
+  padding: 0.45rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
+.page-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.data-table-wrap {
+  overflow-x: auto;
+  border-radius: var(--radius-card);
+  background: #fff;
+  box-shadow: var(--shadow-card);
+}
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.data-table th,
+.data-table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+.data-table th {
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  font-weight: 700;
+  background: var(--color-bg);
+}
+.data-table tr:last-child td {
+  border-bottom: none;
+}
+
+.form-card {
+  background: #fff;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: 1.35rem 1.5rem;
+  margin-bottom: 1.25rem;
+}
+.form-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+@media (max-width: 640px) {
+  .form-row-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.btn-secondary {
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-pill);
+  background: var(--color-bg);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+.btn-secondary:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent-hover);
+}
+
+.role-pill {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  background: var(--color-accent-soft);
+  color: var(--color-accent-hover);
 }

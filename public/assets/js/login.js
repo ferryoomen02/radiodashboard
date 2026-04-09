@@ -1,5 +1,4 @@
 import { setAuth, getAuth, displayNameFromEmail } from "./portal-auth.js";
-import { apiFetch } from "./portal-api.js";
 
 const form = document.getElementById("login-form");
 const errorEl = document.getElementById("login-error");
@@ -8,7 +7,9 @@ const submitBtn = document.getElementById("login-submit");
 async function tryRedirectIfLoggedIn() {
   const auth = getAuth();
   if (!auth?.token) return;
-  const res = await apiFetch("/radio", { method: "GET" });
+  const res = await fetch("/auth/me", {
+    headers: { Authorization: `Bearer ${auth.token}` },
+  });
   if (res.ok) {
     window.location.href = "/dashboard";
   }
@@ -57,11 +58,12 @@ form.addEventListener("submit", async (e) => {
       station: data.station,
     });
 
-    // optioneel: voor toekomstige personalisatie
-    sessionStorage.setItem("portalDisplayName", displayNameFromEmail(data.user?.email));
+    const display =
+      (data.user?.name && data.user.name.trim()) || displayNameFromEmail(data.user?.email);
+    sessionStorage.setItem("portalDisplayName", display);
 
     window.location.href = "/dashboard";
-  } catch (err) {
+  } catch {
     showError("Netwerkfout. Controleer of de server draait.");
     submitBtn.disabled = false;
   }

@@ -1,11 +1,12 @@
 import {
   getAuth,
-  clearAuth,
-  displayNameFromEmail,
+  greetingName,
   timeGreeting,
   formatDateNl,
+  roleLabelNl,
 } from "./portal-auth.js";
-import { apiFetch, handleAuthFailure } from "./portal-api.js";
+import { apiFetch, handleAuthFailure, withStationQuery } from "./portal-api.js";
+import { getActiveStationIdForApi, setActiveStationId } from "./portal-station.js";
 
 const auth = getAuth();
 if (!auth?.token) {
@@ -13,17 +14,19 @@ if (!auth?.token) {
 }
 
 const els = {
-  stationName: document.getElementById("sidebar-station-name"),
   greeting: document.getElementById("greeting-name"),
   date: document.getElementById("header-date"),
+  superBar: document.getElementById("super-station-bar"),
+  superSelect: document.getElementById("active-station-select"),
   stationInfo: document.getElementById("station-info-body"),
   nowPlayingRoot: document.getElementById("now-playing-root"),
   historyContainer: document.getElementById("history-container"),
   userEmail: document.getElementById("user-email"),
+  userDisplayName: document.getElementById("user-display-name"),
+  userRolePill: document.getElementById("user-role-pill"),
   addForm: document.getElementById("add-track-form"),
   addError: document.getElementById("add-track-error"),
   addSuccess: document.getElementById("add-track-success"),
-  logout: document.getElementById("btn-logout"),
 };
 
 function formatPlayedAt(iso) {
@@ -96,22 +99,78 @@ function renderHistory(hist) {
     .join("")}</ul>`;
 }
 
+async function resolveActiveStationId(a) {
+  if (a.user.role !== "SUPER_ADMIN") {
+    els.superBar.hidden = true;
+    return getActiveStationIdForApi(a);
+  }
+
+  els.superBar.hidden = false;
+  const res = await apiFetch("/api/stations");
+  if (handleAuthFailure(res)) return null;
+  if (!res.ok) {
+    els.superSelect.innerHTML = "";
+    return null;
+  }
+
+  const { stations } = await res.json();
+  els.superSelect.innerHTML = (stations || [])
+    .map(
+      (s) =>
+        `<option value="${escapeHtml(s.id)}">${escapeHtml(s.name)}</option>`
+    )
+    .join("");
+
+  let sid = getActiveStationIdForApi(a);
+  if (!sid && stations?.length) {
+    sid = stations[0].id;
+    setActiveStationId(sid);
+  }
+  if (sid && stations?.some((s) => s.id === sid)) {
+    els.superSelect.value = sid;
+  }
+
+  els.superSelect.onchange = () => {
+    setActiveStationId(els.superSelect.value);
+    loadDashboard();
+  };
+
+  return sid || null;
+}
+
 async function loadDashboard() {
-  els.stationName.textContent = auth.station?.name || "Radio";
-  const name =
-    sessionStorage.getItem("portalDisplayName") || displayNameFromEmail(auth.user?.email);
-  els.greeting.textContent = `${timeGreeting()}, ${name}!`;
+  const a = getAuth();
+  if (!a?.token) {
+    window.location.href = "/login";
+    return;
+  }
+
+  els.greeting.textContent = `${timeGreeting()}, ${greetingName(a)}!`;
   els.date.textContent = formatDateNl();
-  els.userEmail.textContent = auth.user?.email || "—";
+  els.userEmail.textContent = a.user?.email || "—";
+  els.userDisplayName.textContent = greetingName(a);
+  els.userRolePill.textContent = roleLabelNl(a.user?.role);
+
+  const sid = await resolveActiveStationId(a);
+
+  if (a.user.role === "SUPER_ADMIN" && !sid) {
+    els.stationInfo.innerHTML =
+      '<p class="empty-state">Maak eerst een zender aan via <strong>Zenders</strong> in het menu.</p>';
+    els.nowPlayingRoot.innerHTML = "";
+    els.historyContainer.innerHTML = "";
+    return;
+  }
 
   els.stationInfo.innerHTML = '<p class="loading-shimmer">Laden…</p>';
   els.nowPlayingRoot.innerHTML = '<p class="loading-shimmer">Laden…</p>';
   els.historyContainer.innerHTML = "";
 
-  const res = await apiFetch("/radio");
+  const url = withStationQuery("/radio", sid);
+  const res = await apiFetch(url);
   if (handleAuthFailure(res)) return;
   if (!res.ok) {
-    els.stationInfo.innerHTML = `<p class="empty-state">Kon data niet laden (${res.status}).</p>`;
+    const err = await res.json().catch(() => ({}));
+    els.stationInfo.innerHTML = `<p class="empty-state">${escapeHtml(err.error || "Kon data niet laden.")}</p>`;
     els.nowPlayingRoot.innerHTML = "";
     return;
   }
@@ -124,6 +183,11 @@ async function loadDashboard() {
       <p><strong>Station</strong><br />${escapeHtml(st?.name || "—")}</p>
       <p><strong>Station-ID</strong><br /><code style="font-size:0.8rem">${escapeHtml(st?.id || "—")}</code></p>
       <p><strong>Nummers in bibliotheek</strong><br />${st?.trackCount ?? 0}</p>
+      ${
+        st?.description
+          ? `<p><strong>Omschrijving</strong><br />${escapeHtml(st.description)}</p>`
+          : ""
+      }
     </div>
   `;
 
@@ -137,6 +201,14 @@ els.addForm.addEventListener("submit", async (e) => {
   els.addError.hidden = true;
   els.addSuccess.hidden = true;
 
+  const a = getAuth();
+  const sid = getActiveStationIdForApi(a);
+  if (a.user.role === "SUPER_ADMIN" && !sid) {
+    els.addError.hidden = false;
+    els.addError.textContent = "Kies eerst een actieve zender.";
+    return;
+  }
+
   const artist = document.getElementById("track-artist").value.trim();
   const title = document.getElementById("track-title").value.trim();
   const durationRaw = document.getElementById("track-duration").value.trim();
@@ -145,6 +217,9 @@ els.addForm.addEventListener("submit", async (e) => {
   if (durationRaw !== "") {
     const n = parseInt(durationRaw, 10);
     if (Number.isFinite(n) && n >= 0) body.durationSeconds = n;
+  }
+  if (a.user.role === "SUPER_ADMIN") {
+    body.stationId = sid;
   }
 
   const res = await apiFetch("/tracks", {
@@ -164,12 +239,6 @@ els.addForm.addEventListener("submit", async (e) => {
   els.addSuccess.textContent = `Toegevoegd: ${data.artist} — ${data.title}`;
   els.addForm.reset();
   await loadDashboard();
-});
-
-els.logout.addEventListener("click", () => {
-  clearAuth();
-  sessionStorage.removeItem("portalDisplayName");
-  window.location.href = "/login";
 });
 
 loadDashboard();

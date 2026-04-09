@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="nl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Gebruikers — SonicWave</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/assets/css/portal.css" />
+  </head>
+  <body data-page="users">
+    <div class="dashboard">
+      <aside id="sidebar-root" class="sidebar" aria-label="Hoofdnavigatie"></aside>
+      <div class="main-wrap">
+        <header class="main-header">
+          <h1 class="page-title">Gebruikers</h1>
+          <p class="header-date">Accounts voor jouw organisatie</p>
+        </header>
+        <main class="main-content">
+          <div class="form-card">
+            <h2 class="card-title" style="margin-top: 0">Nieuwe gebruiker</h2>
+            <form id="form-new-user" class="add-track-form">
+              <div class="form-row-2">
+                <div class="form-group" style="margin-bottom: 0">
+                  <label class="form-label" for="nu-name">Naam</label>
+                  <input class="input-field" id="nu-name" required autocomplete="name" />
+                </div>
+                <div class="form-group" style="margin-bottom: 0">
+                  <label class="form-label" for="nu-email">E-mail</label>
+                  <input class="input-field" id="nu-email" type="email" required autocomplete="off" />
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="nu-password">Tijdelijk wachtwoord</label>
+                <input class="input-field" id="nu-password" type="password" required minlength="6" autocomplete="new-password" />
+              </div>
+              <div id="nu-role-wrap" class="form-group" hidden>
+                <label class="form-label" for="nu-role">Rol</label>
+                <select class="input-field" id="nu-role" style="max-width: 24rem">
+                  <option value="USER">Gebruiker</option>
+                  <option value="STATION_ADMIN">Station admin</option>
+                  <option value="SUPER_ADMIN">Super admin</option>
+                </select>
+              </div>
+              <div id="nu-station-wrap" class="form-group" hidden>
+                <label class="form-label" for="nu-station">Zender</label>
+                <select class="input-field" id="nu-station" style="max-width: 24rem"></select>
+              </div>
+              <p id="nu-hint-station-admin" class="empty-state" style="margin: 0 0 0.75rem" hidden>
+                Nieuwe gebruikers krijgen de rol <strong>Gebruiker</strong> en jouw zender.
+              </p>
+              <button type="submit" class="btn btn-primary" style="width: auto">Gebruiker aanmaken</button>
+              <div id="nu-msg" class="alert" style="margin-top: 1rem" hidden role="status"></div>
+            </form>
+          </div>
+          <div id="users-alert" class="alert alert-error" hidden role="alert"></div>
+          <div class="data-table-wrap">
+            <table class="data-table" aria-label="Gebruikerslijst">
+              <thead>
+                <tr>
+                  <th>Naam</th>
+                  <th>E-mail</th>
+                  <th>Rol</th>
+                  <th>Zender</th>
+                </tr>
+              </thead>
+              <tbody id="users-tbody"></tbody>
+            </table>
+          </div>
+        </main>
+      </div>
+    </div>
+    <script type="module" src="/assets/js/sidebar.js"></script>
+    <script type="module" src="/assets/js/users-page.js"></script>
+  </body>
+</html>

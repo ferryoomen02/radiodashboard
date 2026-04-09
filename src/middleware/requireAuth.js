@@ -28,7 +28,6 @@ export function requireAuth(req, res, next) {
         return res.status(401).json({ error: "Gebruiker niet gevonden." });
       }
       req.user = user;
-      req.stationId = user.stationId;
       next();
     })
     .catch(next);

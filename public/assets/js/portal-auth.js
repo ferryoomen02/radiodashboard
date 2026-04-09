@@ -27,7 +27,6 @@ export function clearAuth() {
   localStorage.removeItem(AUTH_KEY);
 }
 
-/** Toonnaam uit e-mail (ferry.oomen@x → Ferry Oomen) */
 export function displayNameFromEmail(email) {
   if (!email || typeof email !== "string") return "DJ";
   const local = email.split("@")[0] || "";
@@ -36,6 +35,12 @@ export function displayNameFromEmail(email) {
   return parts
     .map((p) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
     .join(" ");
+}
+
+export function greetingName(auth) {
+  if (!auth?.user) return "DJ";
+  if (auth.user.name && auth.user.name.trim()) return auth.user.name.trim();
+  return displayNameFromEmail(auth.user.email);
 }
 
 export function timeGreeting() {
@@ -52,4 +57,21 @@ export function formatDateNl(d = new Date()) {
     month: "long",
     year: "numeric",
   });
+}
+
+export function canAccessStations(role) {
+  return role === "SUPER_ADMIN" || role === "STATION_ADMIN";
+}
+
+export function canAccessUsers(role) {
+  return role === "SUPER_ADMIN" || role === "STATION_ADMIN";
+}
+
+export function roleLabelNl(role) {
+  const m = {
+    SUPER_ADMIN: "Super admin",
+    STATION_ADMIN: "Station admin",
+    USER: "Gebruiker",
+  };
+  return m[role] || role;
 }

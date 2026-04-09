@@ -26,3 +26,9 @@ export function handleAuthFailure(res) {
   }
   return false;
 }
+
+export function withStationQuery(path, stationId) {
+  if (!stationId) return path;
+  const sep = path.includes("?") ? "&" : "?";
+  return `${path}${sep}stationId=${encodeURIComponent(stationId)}`;
+}

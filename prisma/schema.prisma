@@ -7,20 +7,32 @@ generator client {
   provider = "prisma-client-js"
 }
 
-/// Eén account hoort bij precies één station (jouw “zender”).
+enum Role {
+  SUPER_ADMIN
+  STATION_ADMIN
+  USER
+}
+
+/// Toekomstbestendig: meerdere gebruikers per zender; super_admin zonder koppeling (alle zenders).
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
   passwordHash String
-  stationId    String   @unique
-  station      Station  @relation(fields: [stationId], references: [id])
-  createdAt    DateTime @default(now())
+  role         Role      @default(USER)
+  stationId    String?
+  station      Station?  @relation(fields: [stationId], references: [id])
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([stationId])
+  @@index([role])
 }
 
 model Station {
   id             String        @id @default(cuid())
   name           String
-  /// Welk track-id nu “op de radio” staat (geen DB-FK: voorkomt ronde afhankelijkheden).
+  description    String?
   currentTrackId String?
   users          User[]
   tracks         Track[]
@@ -33,7 +45,6 @@ model Track {
   station         Station       @relation(fields: [stationId], references: [id], onDelete: Cascade)
   artist          String
   title           String
-  /// Optioneel: lengte in seconden (“tijd” van het nummer).
   durationSeconds Int?
   createdAt       DateTime      @default(now())
   historyEntries  PlayHistory[]

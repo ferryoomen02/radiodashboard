@@ -1,5 +1,5 @@
 {
-  "name": "radio-backend",
+  "name": "sonicwave-platform",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -12,7 +12,11 @@
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "db:seed": "node prisma/seed.js"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
   },
   "dependencies": {
     "@prisma/client": "^6.5.0",
