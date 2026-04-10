@@ -2,8 +2,13 @@ import { getAuth, clearAuth, canAccessStations, canAccessUsers, roleLabelNl } fr
 import { SUPER_NAV_FALLBACK_KEYS } from "./portal-features.js";
 import { ensurePageSession } from "./portal-session.js";
 import { fetchPlatformBranding } from "./portal-branding.js";
-import { SONICWAVE_DEBUG } from "./portal-debug.js";
-import { swLog, swLogRedirect } from "./portal-debug.js";
+import { SONICWAVE_DEBUG, swPerf, swPerfLog, swLog, swLogRedirect } from "./portal-debug.js";
+
+function escapeHtml(s) {
+  const d = document.createElement("div");
+  d.textContent = s;
+  return d.innerHTML;
+}
 
 function navItem(href, label, icon, page, current) {
   const active = page === current ? " is-active" : "";
@@ -36,28 +41,90 @@ function labelFor(keys, key, fallback) {
   return keys.labelByKey[key] || fallback;
 }
 
-/** Eén keer innerHTML: geen placeholder → geen dubbele paint / “flikkerend” menu. */
-function sidebarShellWithNav(branding, stationLine, role, navInnerHtml) {
-  const platformTitle = escapeHtml(branding.platformName || "SonicWave");
-  const platformSub = escapeHtml(branding.subtitle || "Platform");
+function logoSlotHtml(branding) {
   const initial = escapeHtml((branding.platformName || "S").slice(0, 1).toUpperCase());
-  const logoOrMark = branding.logoUrl
-    ? `<div class="sidebar-logo-wrap"><img src="${escapeHtml(branding.logoUrl)}" alt="" class="sidebar-logo-img" loading="lazy" decoding="async" /></div>`
-    : `<div class="sidebar-brand-fallback" aria-hidden="true"><span class="sidebar-brand-fallback-letter">${initial}</span></div>`;
+  if (branding.logoUrl) {
+    return `<div class="sidebar-logo-wrap"><img src="${escapeHtml(branding.logoUrl)}" alt="" class="sidebar-logo-img" loading="lazy" decoding="async" /></div>`;
+  }
+  return `<div class="sidebar-brand-fallback" aria-hidden="true"><span class="sidebar-brand-fallback-letter">${initial}</span></div>`;
+}
+
+function buildNavInnerHtml(feats, role, enabled, current) {
+  let nav = "";
+
+  if (enabled.has("dashboard")) {
+    nav += navItem("/dashboard", labelFor(feats, "dashboard", "Dashboard"), iconDashboard, "dashboard", current);
+  }
+
+  if (canAccessStations(role) && enabled.has("stations")) {
+    const label = role === "SUPER_ADMIN" ? "Zenders" : "Zenderinstellingen";
+    nav += navItem("/stations", label, iconStation, "stations", current);
+  }
+
+  if (role === "SUPER_ADMIN" && enabled.has("stations")) {
+    nav += navItem("/station-features", "Zenderfuncties", iconSliders, "station-features", current);
+  }
+
+  if (canAccessUsers(role) && enabled.has("users")) {
+    nav += navItem("/users", labelFor(feats, "users", "Gebruikers"), iconUsers, "users", current);
+  }
+
+  if (role === "SUPER_ADMIN" && enabled.has("invites")) {
+    nav += navItem("/invites", labelFor(feats, "invites", "Uitnodigingen"), iconMail, "invites", current);
+  }
+
+  if (role === "SUPER_ADMIN" && enabled.has("platform_branding")) {
+    nav += navItem("/settings", labelFor(feats, "platform_branding", "Branding & portal"), iconSettings, "settings", current);
+  }
+
+  if (enabled.has("media")) {
+    nav += navItem("/media", labelFor(feats, "media", "Media"), iconImage, "media", current);
+  }
+
+  if (enabled.has("djs")) {
+    nav += navItem("/djs", labelFor(feats, "djs", "DJ's"), iconMic, "djs", current);
+  }
+  if (enabled.has("audiologger")) {
+    nav += navItem("/audiologger", labelFor(feats, "audiologger", "Audiologger"), iconMic, "audiologger", current);
+  }
+  if (enabled.has("files")) {
+    nav += navItem("/files", labelFor(feats, "files", "Bestanden"), iconFile, "files", current);
+  }
+  if (enabled.has("site_settings")) {
+    nav += navItem("/site-settings", labelFor(feats, "site_settings", "Site-instellingen"), iconSettings, "site-settings", current);
+  }
+
+  nav += navItem("/account", "Mijn account", iconAccount, "account", current);
+  nav += mutedItem("Studio (binnenkort)", iconStation);
+
+  return nav;
+}
+
+/** Direct zichtbare shell (localStorage) — geen wachten op netwerk. Vaste hoogtes = min. layout-shift. */
+function sidebarImmediateShellHtml() {
+  const auth = getAuth();
+  const role = auth?.user?.role ?? "";
+  const stationLine =
+    role === "SUPER_ADMIN" ? "Alle zenders" : auth?.station?.name || "…";
+  const roleLbl = role ? roleLabelNl(role) : "Laden…";
   return `
     <div class="sidebar-brand">
       <div class="sidebar-brand-inner">
-        <div class="sidebar-logo-slot">${logoOrMark}</div>
+        <div class="sidebar-logo-slot" id="sw-sidebar-logo-slot">
+          <div class="sidebar-inline-skeleton sidebar-inline-skeleton--logo" aria-hidden="true"></div>
+        </div>
         <div class="sidebar-brand-meta">
-          <strong class="sidebar-brand-name" id="sidebar-brand-title">${platformTitle}</strong>
-          <span class="sidebar-brand-subtitle">${platformSub}</span>
+          <strong class="sidebar-brand-name" id="sidebar-brand-title">SonicWave</strong>
+          <span class="sidebar-brand-subtitle" id="sidebar-brand-sub">Platform</span>
           <span class="sidebar-brand-station" id="sidebar-context-line">${escapeHtml(stationLine)}</span>
         </div>
       </div>
     </div>
-    <nav class="nav-section" aria-label="Menu">
-      <div class="nav-label">Menu · ${escapeHtml(roleLabelNl(role))}</div>
-      ${navInnerHtml}
+    <nav class="nav-section sidebar-nav-section" aria-label="Menu">
+      <div class="nav-label" id="sidebar-nav-label">Menu · ${escapeHtml(roleLbl)}</div>
+      <div id="sidebar-nav-items" class="sidebar-nav-items sidebar-nav-items--pending">
+        <div class="sidebar-nav-skel" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+      </div>
     </nav>
     <div class="sidebar-footer">
       <button type="button" class="nav-item sidebar-logout" id="sidebar-logout" style="width:100%;border:none;background:transparent;text-align:left;cursor:pointer;font:inherit;">
@@ -66,6 +133,35 @@ function sidebarShellWithNav(branding, stationLine, role, navInnerHtml) {
       </button>
     </div>
   `;
+}
+
+function wireSidebarLogout(root) {
+  root.querySelector("#sidebar-logout")?.addEventListener("click", () => {
+    clearAuth();
+    sessionStorage.removeItem("portalDisplayName");
+    sessionStorage.removeItem("sonicwaveActiveStationId");
+    swLogRedirect("/login", "uitloggen knop");
+    window.location.href = "/login";
+  });
+}
+
+function hydrateSidebarDom(root, branding, stationLine, role, navHtml) {
+  const titleEl = root.querySelector("#sidebar-brand-title");
+  const subEl = root.querySelector("#sidebar-brand-sub");
+  const ctxEl = root.querySelector("#sidebar-context-line");
+  const slot = root.querySelector("#sw-sidebar-logo-slot");
+  const items = root.querySelector("#sidebar-nav-items");
+  const labelEl = root.querySelector("#sidebar-nav-label");
+
+  if (titleEl) titleEl.textContent = branding.platformName || "SonicWave";
+  if (subEl) subEl.textContent = branding.subtitle || "Platform";
+  if (ctxEl) ctxEl.textContent = stationLine;
+  if (labelEl) labelEl.textContent = `Menu · ${roleLabelNl(role)}`;
+  if (slot) slot.innerHTML = logoSlotHtml(branding);
+  if (items) {
+    items.classList.remove("sidebar-nav-items--pending");
+    items.innerHTML = navHtml;
+  }
 }
 
 export async function mountSidebar() {
@@ -95,35 +191,54 @@ export async function mountSidebar() {
 }
 
 async function mountSidebarBody(root) {
+  swPerf.sidebarMountBodiesStarted += 1;
   if (typeof window !== "undefined") {
     window.__swSidebarMounts = (window.__swSidebarMounts || 0) + 1;
     if (SONICWAVE_DEBUG) {
-      console.debug("[SonicWave sidebar] mountSidebarBody start", { count: window.__swSidebarMounts });
+      console.debug("[SonicWave sidebar] mountSidebarBody start", {
+        count: window.__swSidebarMounts,
+        perf: swPerf.sidebarMountBodiesStarted,
+      });
     }
   }
 
-  let auth = getAuth();
-  if (!auth?.token) {
+  if (!getAuth()?.token) {
     swLog("sidebar", "geen token → redirect /login");
     swLogRedirect("/login", "mountSidebar zonder token");
     window.location.href = "/login";
     return;
   }
 
-  const session = await ensurePageSession();
-  auth = session.auth || getAuth();
+  root.innerHTML = sidebarImmediateShellHtml();
+  root.classList.add("sidebar--ready", "sidebar--nav-pending");
+  wireSidebarLogout(root);
+
+  let session;
+  let branding;
+  try {
+    [session, branding] = await Promise.all([ensurePageSession(), fetchPlatformBranding()]);
+  } catch (err) {
+    swLog("sidebar", "mountSidebarBody: sessie/branding fout", String(err?.message || err));
+    const items = root.querySelector("#sidebar-nav-items");
+    if (items) {
+      items.classList.remove("sidebar-nav-items--pending");
+      items.innerHTML =
+        '<p class="sidebar-nav-error" role="alert">Menu kon niet laden. Vernieuw de pagina.</p>';
+    }
+    swPerfLog("sidebar fout", { error: String(err?.message || err) });
+    return;
+  }
+
+  const auth = session?.auth || getAuth();
   if (!auth?.token) {
     return;
   }
-  swLog("sidebar", "sessie geladen (gedeeld met pagina)", { role: auth.user?.role });
 
-  const branding = await fetchPlatformBranding();
+  swLog("sidebar", "sessie + branding geladen (parallel)", { role: auth.user?.role });
 
   const role = auth.user?.role;
   const stationLine =
-    role === "SUPER_ADMIN"
-      ? "Alle zenders"
-      : auth.station?.name || "Geen zender";
+    role === "SUPER_ADMIN" ? "Alle zenders" : auth.station?.name || "Geen zender";
 
   const feats = session.features;
   let enabled = feats?.enabledKeys ?? new Set();
@@ -132,6 +247,8 @@ async function mountSidebarBody(root) {
   if (role === "SUPER_ADMIN") {
     SUPER_NAV_FALLBACK_KEYS.forEach((k) => enabled.add(k));
   }
+
+  const navHtml = buildNavInnerHtml(feats, role, enabled, current);
 
   swLog("sidebar", "mount OK", {
     page: current,
@@ -143,80 +260,12 @@ async function mountSidebarBody(root) {
     console.debug("[SonicWave sidebar] één render", { role, email: auth.user?.email, navKeyCount: enabled.size });
   }
 
-  let nav = "";
-
-  if (enabled.has("dashboard")) {
-    nav += navItem("/dashboard", labelFor(feats, "dashboard", "Dashboard"), iconDashboard, "dashboard", current);
-  }
-
-  if (canAccessStations(role) && enabled.has("stations")) {
-    const label = role === "SUPER_ADMIN" ? "Zenders" : "Zenderinstellingen";
-    nav += navItem("/stations", label, iconStation, "stations", current);
-  }
-
-  if (role === "SUPER_ADMIN" && enabled.has("stations")) {
-    nav += navItem(
-      "/station-features",
-      "Zenderfuncties",
-      iconSliders,
-      "station-features",
-      current
-    );
-  }
-
-  if (canAccessUsers(role) && enabled.has("users")) {
-    nav += navItem("/users", labelFor(feats, "users", "Gebruikers"), iconUsers, "users", current);
-  }
-
-  if (role === "SUPER_ADMIN" && enabled.has("invites")) {
-    nav += navItem("/invites", "Uitnodigingen", iconMail, "invites", current);
-  }
-
-  if (role === "SUPER_ADMIN" && enabled.has("platform_branding")) {
-    nav += navItem(
-      "/settings",
-      labelFor(feats, "platform_branding", "Branding & portal"),
-      iconSettings,
-      "settings",
-      current
-    );
-  }
-
-  if (enabled.has("media")) {
-    nav += navItem("/media", labelFor(feats, "media", "Media"), iconImage, "media", current);
-  }
-
-  if (enabled.has("djs")) {
-    nav += navItem("/djs", labelFor(feats, "djs", "DJ's"), iconMic, "djs", current);
-  }
-  if (enabled.has("audiologger")) {
-    nav += navItem(
-      "/audiologger",
-      labelFor(feats, "audiologger", "Audiologger"),
-      iconMic,
-      "audiologger",
-      current
-    );
-  }
-  if (enabled.has("files")) {
-    nav += navItem("/files", labelFor(feats, "files", "Bestanden"), iconFile, "files", current);
-  }
-  if (enabled.has("site_settings")) {
-    nav += navItem(
-      "/site-settings",
-      labelFor(feats, "site_settings", "Site-instellingen"),
-      iconSettings,
-      "site-settings",
-      current
-    );
-  }
-
-  nav += navItem("/account", "Mijn account", iconAccount, "account", current);
-  nav += mutedItem("Studio (binnenkort)", iconStation);
-
-  root.innerHTML = sidebarShellWithNav(branding, stationLine, role, nav);
+  hydrateSidebarDom(root, branding, stationLine, role, navHtml);
+  root.classList.remove("sidebar--nav-pending");
   root.dataset.sidebarMounted = "1";
-  root.classList.add("sidebar--ready");
+
+  swPerf.sidebarHydrationsCompleted += 1;
+  swPerfLog("sidebar klaar", { page: current });
 
   if (SONICWAVE_DEBUG) {
     const dbg = document.createElement("div");
@@ -226,21 +275,6 @@ async function mountSidebarBody(root) {
     dbg.innerHTML = `<div style="font-size:10px;line-height:1.35;opacity:0.75;padding:0.5rem 1rem 0;color:rgba(255,255,255,0.65);word-break:break-word;border-top:1px solid rgba(255,255,255,0.08)"><strong style="color:rgba(255,255,255,0.9)">Debug</strong><br/>role: ${escapeHtml(String(u?.role ?? "—"))}<br/>email: ${escapeHtml(String(u?.email ?? "—"))}<br/>permissions: ${escapeHtml(JSON.stringify(u?.permissions ?? []))}</div>`;
     root.querySelector(".sidebar-footer")?.before(dbg);
   }
-
-  root.querySelector("#sidebar-logout")?.addEventListener("click", () => {
-    clearAuth();
-    sessionStorage.removeItem("portalDisplayName");
-    sessionStorage.removeItem("sonicwaveActiveStationId");
-    swLogRedirect("/login", "uitloggen knop");
-    window.location.href = "/login";
-  });
-}
-
-
-function escapeHtml(s) {
-  const d = document.createElement("div");
-  d.textContent = s;
-  return d.innerHTML;
 }
 
 async function init() {

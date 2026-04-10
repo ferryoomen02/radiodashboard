@@ -4,6 +4,28 @@
  */
 export const SONICWAVE_DEBUG = true;
 
+/** Tijdelijke performance-tellers (sidebar /auth/me / features). Console: `__swPerf` */
+export const swPerf = {
+  sidebarMountBodiesStarted: 0,
+  sidebarHydrationsCompleted: 0,
+  authMeNetworkRequests: 0,
+  featuresNetworkRequests: 0,
+  ensurePageSessionInvocations: 0,
+  ensurePageSessionNewChains: 0,
+  ensurePageSessionPromiseReuses: 0,
+  brandingNetworkRequests: 0,
+};
+
+export function swPerfLog(phase, extra) {
+  if (!SONICWAVE_DEBUG) return;
+  console.info("[SonicWave perf]", phase, { ...swPerf, ...extra });
+}
+
+if (typeof window !== "undefined") {
+  window.__swPerf = swPerf;
+  window.__swPerfLog = swPerfLog;
+}
+
 let redirectCount = 0;
 const REDIRECT_WARN = 4;
 

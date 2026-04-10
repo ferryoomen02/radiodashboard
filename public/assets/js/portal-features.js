@@ -1,6 +1,6 @@
 import { getAuth } from "./portal-auth.js";
 import { apiFetch, handleAuthFailure } from "./portal-api.js";
-import { SONICWAVE_DEBUG } from "./portal-debug.js";
+import { SONICWAVE_DEBUG, swPerf } from "./portal-debug.js";
 
 /** Minimale keys zodat super_admin-nav nooit leeg raakt (fallback bij API-fout). */
 export const SUPER_NAV_FALLBACK_KEYS = [
@@ -64,6 +64,7 @@ async function fetchActiveFeaturesImpl(force, opts) {
     ? `/api/active-features?stationId=${encodeURIComponent(stationId)}`
     : "/api/active-features";
 
+  swPerf.featuresNetworkRequests += 1;
   const res = await apiFetch(url);
   if (handleAuthFailure(res)) return null;
   if (!res.ok) {

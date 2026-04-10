@@ -254,6 +254,71 @@ body {
   opacity: 0.65;
 }
 
+/* Sidebar: directe shell + menu-laden (geen lege rail tot API klaar is) */
+.sidebar--nav-pending .sidebar-nav-section {
+  opacity: 0.92;
+}
+
+.sidebar-inline-skeleton--logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0.11) 50%,
+    rgba(255, 255, 255, 0.06) 100%
+  );
+  background-size: 200% 100%;
+  animation: sw-sidebar-skeleton 1.2s ease-in-out infinite;
+}
+
+.sidebar-nav-skel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.15rem 0 0.35rem;
+}
+.sidebar-nav-skel span {
+  display: block;
+  height: 0.65rem;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0.09) 50%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  background-size: 200% 100%;
+  animation: sw-sidebar-skeleton 1.2s ease-in-out infinite;
+}
+.sidebar-nav-skel span:nth-child(1) {
+  width: 72%;
+}
+.sidebar-nav-skel span:nth-child(2) {
+  width: 88%;
+}
+.sidebar-nav-skel span:nth-child(3) {
+  width: 64%;
+}
+.sidebar-nav-skel span:nth-child(4) {
+  width: 80%;
+}
+.sidebar-nav-skel span:nth-child(5) {
+  width: 70%;
+}
+.sidebar-nav-skel span:nth-child(6) {
+  width: 55%;
+}
+
+.sidebar-nav-error {
+  margin: 0;
+  padding: 0.5rem 0.25rem 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.88);
+}
+
 .sidebar .nav-section {
   min-height: 200px;
 }

@@ -21,6 +21,15 @@ export async function apiFetch(path, options = {}) {
     swFetchSeq += 1;
     console.debug("[SonicWave fetch]", `#${swFetchSeq}`, method, path, { hasAuth: Boolean(auth?.token) });
     swLog("fetch", "start", { method, path, hasAuth: Boolean(auth?.token) });
+    if (typeof window !== "undefined") {
+      window.__swRequestLog = window.__swRequestLog || [];
+      window.__swRequestLog.push({
+        n: swFetchSeq,
+        method,
+        path,
+        t: typeof performance !== "undefined" ? Math.round(performance.now()) : 0,
+      });
+    }
   }
   const t0 = typeof performance !== "undefined" ? performance.now() : 0;
 

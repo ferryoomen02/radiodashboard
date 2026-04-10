@@ -1,7 +1,7 @@
 import { getAuth } from "./portal-auth.js";
 import { refreshAuthProfile } from "./auth-refresh.js";
 import { fetchActiveFeatures, clearActiveFeaturesCache } from "./portal-features.js";
-import { SONICWAVE_DEBUG } from "./portal-debug.js";
+import { SONICWAVE_DEBUG, swPerf } from "./portal-debug.js";
 
 /** Eén gedeelde auth + features-load per volledige pageload (sidebar + pagina-scripts delen dezelfde Promise). */
 let pageSessionPromise = null;
@@ -31,7 +31,9 @@ export function invalidatePageSession(reason) {
  * @returns {Promise<{ auth: ReturnType<typeof getAuth>, features: Awaited<ReturnType<typeof fetchActiveFeatures>> }>}
  */
 export async function ensurePageSession() {
+  swPerf.ensurePageSessionInvocations += 1;
   if (pageSessionPromise) {
+    swPerf.ensurePageSessionPromiseReuses += 1;
     logSession("ensurePageSession → hergebruik bestaande promise");
     return pageSessionPromise;
   }
@@ -41,6 +43,7 @@ export async function ensurePageSession() {
   if (typeof window !== "undefined") {
     window.__swSessionStarts = (window.__swSessionStarts || 0) + 1;
   }
+  swPerf.ensurePageSessionNewChains += 1;
   logSession("ensurePageSession → nieuwe keten (auth + features)");
 
   const run = (async () => {
@@ -50,7 +53,7 @@ export async function ensurePageSession() {
       lastSession = { auth: null, features: null };
       return lastSession;
     }
-    const features = await fetchActiveFeatures(true, {
+    const features = await fetchActiveFeatures(false, {
       role: auth.user?.role,
       from: "ensurePageSession",
     });

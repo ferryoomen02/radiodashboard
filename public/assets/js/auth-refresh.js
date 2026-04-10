@@ -1,7 +1,7 @@
 import { getAuth, setAuth } from "./portal-auth.js";
 import { apiFetch, handleAuthFailure } from "./portal-api.js";
 import { clearActiveFeaturesCache } from "./portal-features.js";
-import { SONICWAVE_DEBUG } from "./portal-debug.js";
+import { SONICWAVE_DEBUG, swPerf } from "./portal-debug.js";
 
 /** Parallelle aanroepen (sidebar + dashboard) delen één /auth/me-request. */
 let refreshInFlight = null;
@@ -31,6 +31,7 @@ async function refreshAuthProfileImpl() {
   if (SONICWAVE_DEBUG) {
     console.debug("[SonicWave auth] refreshAuthProfile: start GET /auth/me");
   }
+  swPerf.authMeNetworkRequests += 1;
   const res = await apiFetch("/auth/me");
   if (handleAuthFailure(res)) {
     if (SONICWAVE_DEBUG) {

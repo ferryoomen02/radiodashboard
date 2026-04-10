@@ -1,6 +1,5 @@
 import {
   getAuth,
-  setAuth,
   greetingName,
   timeGreeting,
   formatDateNl,
@@ -184,41 +183,6 @@ if (!bootAuth?.token) {
       .join("")}</ul>`;
   }
 
-  /**
-   * Synchroniseert user + station uit de API naar localStorage.
-   * Voorkomt dat een oude portalAuth (zonder role) de verkeerde tak kiest.
-   */
-  async function syncUserFromServer(token) {
-    const res = await apiFetch("/auth/me");
-    console.log("[SonicWave debug] GET /auth/me status:", res.status);
-    const parsed = await parseResponseJson(res);
-    console.log("[SonicWave debug] GET /auth/me body:", parsed.ok ? parsed.data : parsed.raw?.slice(0, 400));
-
-    if (handleAuthFailure(res)) {
-      return null;
-    }
-    if (!res.ok) {
-      showDashboardError("Profiel ophalen", `HTTP ${res.status}`);
-      return null;
-    }
-    if (!parsed.ok || !parsed.data?.user) {
-      showDashboardError(
-        "Profiel ophalen",
-        "Server stuurde geen geldige JSON of mist `user`. Controleer of je op dezelfde host/port zit als de API."
-      );
-      return null;
-    }
-
-    setAuth({
-      token,
-      user: parsed.data.user,
-      station: parsed.data.station ?? null,
-    });
-    const fresh = getAuth();
-    console.log("[SonicWave debug] localStorage bijgewerkt, role:", fresh?.user?.role, "station:", fresh?.station?.id);
-    return fresh;
-  }
-
   async function resolveActiveStationId(a) {
     const role = a.user?.role;
     if (role !== "SUPER_ADMIN") {
@@ -299,18 +263,12 @@ if (!bootAuth?.token) {
         return;
       }
 
-      let session = await ensurePageSession();
-      let a = session.auth;
+      const session = await ensurePageSession();
+      const a = session.auth;
       if (!a?.token) {
-        a = await syncUserFromServer(raw.token);
-        if (!a) {
-          return;
-        }
-        invalidatePageSession("dashboard syncUserFromServer");
-        session = await ensurePageSession();
-        a = session.auth;
-      }
-      if (!a?.token) {
+        swLog("dashboard", "loadDashboard: geen auth na ensurePageSession → /login");
+        swLogRedirect("/login", "dashboard zonder token na sessie");
+        window.location.href = "/login";
         return;
       }
 
