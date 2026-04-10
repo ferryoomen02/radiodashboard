@@ -39,6 +39,24 @@
 html {
   font-size: 16px;
   -webkit-font-smoothing: antialiased;
+  /* Voorkomt witte flits tijdens paint vóór body-bg (MPA full reload). */
+  background: var(--color-bg);
+}
+
+/* Cross-document view transitions (o.a. Chromium): zachtere overgang tussen volledige pagina-navigatie. */
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 180ms;
+  animation-timing-function: var(--ease-out);
+}
+
+html.portal-nav-is-leaving .main-wrap {
+  opacity: 0.94;
+  transition: opacity 0.12s ease;
 }
 
 body {
