@@ -246,14 +246,13 @@ body {
   background: var(--color-sidebar);
 }
 
-/* Eén contentkolom: subtiele fade-in na eerste render (geen skeleton → menu switch) */
+/* Menu direct leesbaar na render (geen opacity-0 tussen pagina’s); restore + mount zetten --visible meteen. */
 .sidebar-rail {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  opacity: 0;
-  transition: opacity 0.22s ease-out;
+  opacity: 1;
 }
 .sidebar-rail--visible {
   opacity: 1;

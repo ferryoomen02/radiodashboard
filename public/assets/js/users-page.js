@@ -106,14 +106,11 @@ function countSuperAdmins() {
   return lastUsers.filter((u) => u.role === "SUPER_ADMIN").length;
 }
 
-/** Waarom verwijderen niet mag (voor disabled-knop / titel). */
+/** Alleen eigen account: backend weigert dit ook. */
 function deleteBlockedReason(u) {
   if (!auth?.user?.id || !u) return "Niet toegestaan.";
   if (u.id === auth.user.id) {
     return "Je kunt je eigen account niet verwijderen.";
-  }
-  if (u.role === "SUPER_ADMIN" && countSuperAdmins() <= 1) {
-    return "De laatste super admin kan niet worden verwijderd. Wijs eerst een andere super admin aan.";
   }
   return null;
 }
@@ -365,7 +362,13 @@ function openDeleteUserDialog(userId) {
   const stationNote = u.station
     ? ` Deze gebruiker staat gekoppeld aan zender <strong>${escapeHtml(u.station.name)}</strong>.`
     : "";
-  duBody.innerHTML = `Je staat op het punt om <strong>${escapeHtml(u.name)}</strong> (${escapeHtml(u.email)}) te verwijderen.${stationNote} Dit account is daarna niet meer bruikbaar.`;
+  const superWarn =
+    u.role === "SUPER_ADMIN" && countSuperAdmins() <= 1
+      ? `<p class="alert alert-error" style="margin:0.75rem 0 0;font-size:0.875rem"><strong>Let op:</strong> dit is de enige super admin. Na verwijderen is er geen account meer met volledig platformbeheer tot je via de database of een herstelprocedure een nieuwe aanmaakt.</p>`
+      : u.role === "SUPER_ADMIN"
+        ? `<p class="empty-state" style="margin:0.75rem 0 0;font-size:0.8125rem">Super admin-accounts hebben toegang tot alle zenders en beheerfuncties.</p>`
+        : "";
+  duBody.innerHTML = `Je staat op het punt om <strong>${escapeHtml(u.name)}</strong> (${escapeHtml(u.email)}) te verwijderen.${stationNote} Dit account is daarna niet meer bruikbaar.${superWarn}`;
   deleteUserDialog.showModal();
 }
 

@@ -131,7 +131,7 @@ function buildCompleteSidebarHtml(session, branding, currentPage) {
   const stationEsc = escapeHtml(stationLine);
 
   return `
-    <div class="sidebar-rail" data-sidebar-rail>
+    <div class="sidebar-rail sidebar-rail--visible" data-sidebar-rail>
       <header class="sidebar-brand" aria-label="Platform">
         <div class="sidebar-brand-inner">
           <div class="sidebar-logo-slot" id="sw-sidebar-logo-slot">${logoSlotHtml(branding)}</div>
@@ -164,16 +164,6 @@ function wireSidebarLogout(root) {
     sessionStorage.removeItem("sonicwaveActiveStationId");
     swLogRedirect("/login", "uitloggen knop");
     window.location.href = "/login";
-  });
-}
-
-function scheduleSidebarFadeIn(root) {
-  const rail = root.querySelector("[data-sidebar-rail]");
-  if (!rail) return;
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      rail.classList.add("sidebar-rail--visible");
-    });
   });
 }
 
@@ -267,7 +257,8 @@ async function mountSidebarBody(root) {
   root.dataset.sidebarMounted = "1";
   delete root.dataset.sidebarRestored;
   wireSidebarLogout(root);
-  scheduleSidebarFadeIn(root);
+  /* Direct zichtbaar: geen opacity-0 tussen innerHTML en dubbele rAF (voorkomt flitsen bij MPA). */
+  root.querySelector("[data-sidebar-rail]")?.classList.add("sidebar-rail--visible");
 
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {

@@ -258,15 +258,6 @@ usersRouter.delete(
       return res.status(404).json({ error: "Gebruiker niet gevonden." });
     }
 
-    if (target.role === Role.SUPER_ADMIN) {
-      const superCount = await prisma.user.count({ where: { role: Role.SUPER_ADMIN } });
-      if (superCount <= 1) {
-        return res.status(400).json({
-          error: "De laatste super admin kan niet worden verwijderd. Wijs eerst een andere super admin aan.",
-        });
-      }
-    }
-
     await prisma.user.delete({ where: { id } });
     return res.json({ ok: true, message: "Gebruiker verwijderd." });
   })
