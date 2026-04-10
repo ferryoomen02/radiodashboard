@@ -84,10 +84,8 @@ form.addEventListener("submit", async (e) => {
   e.preventDefault();
   msg.hidden = true;
   const name = document.getElementById("co-name").value.trim();
-  let slug = document.getElementById("co-slug").value.trim();
   if (!name) return;
   const body = { name };
-  if (slug) body.slug = slug;
   const res = await apiFetch("/api/companies", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

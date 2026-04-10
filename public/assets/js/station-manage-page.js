@@ -19,7 +19,7 @@ const form = document.getElementById("form-station");
 const msg = document.getElementById("st-msg");
 const companySel = document.getElementById("st-company");
 const nameInp = document.getElementById("st-name");
-const slugInp = document.getElementById("st-slug");
+const slugDisplay = document.getElementById("st-slug-display");
 const statusSel = document.getElementById("st-status");
 const descInp = document.getElementById("st-desc");
 const featuresRoot = document.getElementById("st-features");
@@ -88,7 +88,9 @@ async function loadAll() {
   subEl.textContent = `${st.company?.name || "—"} · ${st.slug || ""} · ${st.status || ""}`;
 
   nameInp.value = st.name || "";
-  slugInp.value = st.slug || "";
+  if (slugDisplay) {
+    slugDisplay.textContent = `Interne URL-slug (automatisch): ${st.slug || "—"}`;
+  }
   statusSel.value = st.status || "ACTIVE";
   descInp.value = st.description || "";
   await loadCompanies(st.companyId);
@@ -110,7 +112,6 @@ form.addEventListener("submit", async (e) => {
   msg.hidden = true;
   const body = {
     name: nameInp.value.trim(),
-    slug: slugInp.value.trim(),
     companyId: companySel.value,
     status: statusSel.value,
     description: descInp.value.trim() || null,

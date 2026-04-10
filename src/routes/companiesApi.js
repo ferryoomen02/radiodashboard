@@ -4,7 +4,7 @@ import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRoles } from "../middleware/requireRoles.js";
 import { Role } from "../constants/roles.js";
 import { asyncHandler } from "../asyncHandler.js";
-import { slugify } from "../lib/slug.js";
+import { ensureUniqueCompanySlug } from "../lib/slug.js";
 
 export const companiesRouter = Router();
 companiesRouter.use(requireAuth);
@@ -35,15 +35,10 @@ companiesRouter.post(
   "/",
   asyncHandler(async (req, res) => {
     const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
-    let slug = typeof req.body?.slug === "string" ? req.body.slug.trim() : "";
     if (!name) {
       return res.status(400).json({ error: "Naam is verplicht." });
     }
-    slug = slug ? slugify(slug) : slugify(name);
-    const exists = await prisma.company.findUnique({ where: { slug } });
-    if (exists) {
-      return res.status(400).json({ error: "Deze slug bestaat al. Kies een andere naam of slug." });
-    }
+    const slug = await ensureUniqueCompanySlug(prisma, name);
     const metadata =
       req.body?.metadata && typeof req.body.metadata === "object" && !Array.isArray(req.body.metadata)
         ? req.body.metadata
@@ -90,13 +85,7 @@ companiesRouter.patch(
       const n = req.body.name.trim();
       if (!n) return res.status(400).json({ error: "Naam mag niet leeg zijn." });
       data.name = n;
-    }
-    if (typeof req.body?.slug === "string") {
-      const s = slugify(req.body.slug);
-      if (!s) return res.status(400).json({ error: "Slug ongeldig." });
-      const clash = await prisma.company.findFirst({ where: { slug: s, NOT: { id } } });
-      if (clash) return res.status(400).json({ error: "Deze slug is al in gebruik." });
-      data.slug = s;
+      data.slug = await ensureUniqueCompanySlug(prisma, n, id);
     }
     if (req.body?.metadata !== undefined) {
       if (typeof req.body.metadata !== "object" || req.body.metadata === null || Array.isArray(req.body.metadata)) {

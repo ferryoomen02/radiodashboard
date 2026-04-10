@@ -11,7 +11,7 @@ import {
 } from "../lib/stationFeatureStore.js";
 import { requireUserStationFeature } from "../middleware/requireStationFeature.js";
 import { asyncHandler } from "../asyncHandler.js";
-import { slugify } from "../lib/slug.js";
+import { ensureUniqueStationSlug } from "../lib/slug.js";
 
 export const stationsRouter = Router();
 stationsRouter.use(requireAuth);
@@ -88,9 +88,15 @@ stationsRouter.get(
       return res.status(404).json({ error: "Zender niet gevonden." });
     }
     const enabledKeys = await getEnabledFeatureKeysForStation(id);
+    const stationAdmins = await prisma.user.findMany({
+      where: { stationId: id, role: Role.STATION_ADMIN },
+      select: { id: true, name: true, email: true },
+      orderBy: { email: "asc" },
+    });
     return res.json({
       ...stationListItem(s),
       enabledFeatureKeys: enabledKeys,
+      stationAdmins,
     });
   })
 );
@@ -101,7 +107,6 @@ stationsRouter.post(
   asyncHandler(async (req, res) => {
     const companyId = typeof req.body?.companyId === "string" ? req.body.companyId.trim() : "";
     const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
-    let slug = typeof req.body?.slug === "string" ? req.body.slug.trim() : "";
     const description =
       typeof req.body?.description === "string" ? req.body.description.trim() : null;
     const statusRaw = req.body?.status;
@@ -112,11 +117,7 @@ stationsRouter.post(
     if (!company) {
       return res.status(400).json({ error: "Bedrijf niet gevonden." });
     }
-    slug = slug ? slugify(slug) : slugify(name);
-    const slugTaken = await prisma.station.findUnique({ where: { slug } });
-    if (slugTaken) {
-      return res.status(400).json({ error: "Deze zender-slug bestaat al." });
-    }
+    const slug = await ensureUniqueStationSlug(prisma, name);
     let status = "ACTIVE";
     if (typeof statusRaw === "string" && ["ACTIVE", "INACTIVE", "ARCHIVED"].includes(statusRaw)) {
       status = statusRaw;
@@ -260,6 +261,7 @@ stationsRouter.patch(
       const n = nameRaw.trim();
       if (!n) return res.status(400).json({ error: "Naam mag niet leeg zijn." });
       data.name = n;
+      data.slug = await ensureUniqueStationSlug(prisma, n, id);
     }
     if (descRaw !== undefined) {
       data.description =
@@ -267,13 +269,6 @@ stationsRouter.patch(
     }
 
     if (isSuperAdmin(user)) {
-      if (typeof req.body?.slug === "string") {
-        const s = slugify(req.body.slug);
-        if (!s) return res.status(400).json({ error: "Slug ongeldig." });
-        const clash = await prisma.station.findFirst({ where: { slug: s, NOT: { id } } });
-        if (clash) return res.status(400).json({ error: "Deze slug is al in gebruik." });
-        data.slug = s;
-      }
       if (typeof req.body?.companyId === "string") {
         const cid = req.body.companyId.trim();
         const c = await prisma.company.findUnique({ where: { id: cid } });
@@ -321,5 +316,27 @@ stationsRouter.patch(
       },
     });
     return res.json(stationListItem(full));
+  })
+);
+
+stationsRouter.delete(
+  "/:id",
+  requireRoles(Role.SUPER_ADMIN),
+  asyncHandler(async (req, res) => {
+    const id = req.params.id;
+    const station = await prisma.station.findUnique({
+      where: { id },
+      include: { _count: { select: { users: true } } },
+    });
+    if (!station) {
+      return res.status(404).json({ error: "Zender niet gevonden." });
+    }
+    if (station._count.users > 0) {
+      return res.status(400).json({
+        error: `Deze zender heeft nog ${station._count.users} gekoppelde gebruiker(s). Verwijder of verplaats deze accounts eerst. Een zender met gekoppelde gebruikers kan niet worden verwijderd (bescherming tegen dataverlies).`,
+      });
+    }
+    await prisma.station.delete({ where: { id } });
+    return res.json({ ok: true, message: "Zender verwijderd." });
   })
 );

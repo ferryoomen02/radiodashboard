@@ -21,14 +21,15 @@
       <div class="main-wrap">
         <header class="main-header">
           <h1 class="page-title" id="stations-page-title">Zenders</h1>
-          <p class="header-date">Radiozenders per bedrijf — beheer naam, slug en status (super admin).</p>
+          <p class="header-date">
+            Zenders per bedrijf. De technische URL-slug wordt automatisch uit de naam gemaakt.
+          </p>
         </header>
         <main class="main-content">
           <div id="stations-assign-admin" class="form-card" hidden>
             <h2 class="card-title" style="margin-top: 0">Station admin koppelen</h2>
             <p class="empty-state" style="margin: 0 0 1rem">
-              Koppel een <strong>bestaand</strong> account (e-mail) als station admin aan een zender. Het account mag nog
-              geen andere rol hebben die conflicteert — gebruik een account dat al bestaat of nodig eerst iemand uit.
+              Koppel een <strong>bestaand</strong> account (e-mail) als station admin aan een zender.
             </p>
             <form id="form-assign-admin" class="add-track-form">
               <div class="form-row-2">
@@ -52,21 +53,15 @@
                 <label class="form-label" for="new-station-company">Bedrijf</label>
                 <select class="input-field" id="new-station-company" required></select>
               </div>
-              <div class="form-row-2">
-                <div class="form-group" style="margin-bottom: 0">
-                  <label class="form-label" for="new-station-name">Naam</label>
-                  <input class="input-field" id="new-station-name" required autocomplete="off" />
-                </div>
-                <div class="form-group" style="margin-bottom: 0">
-                  <label class="form-label" for="new-station-slug">Slug (URL)</label>
-                  <input class="input-field" id="new-station-slug" placeholder="automatisch indien leeg" autocomplete="off" />
-                </div>
+              <div class="form-group">
+                <label class="form-label" for="new-station-name">Naam</label>
+                <input class="input-field" id="new-station-name" required autocomplete="off" />
               </div>
               <div class="form-group">
                 <label class="form-label" for="new-station-desc">Omschrijving (optioneel)</label>
                 <input class="input-field" id="new-station-desc" autocomplete="off" />
               </div>
-              <button type="submit" class="btn btn-primary" style="width: auto; margin-top: 1rem">
+              <button type="submit" class="btn btn-primary" style="width: auto; margin-top: 0.25rem">
                 Zender aanmaken
               </button>
               <div id="new-station-msg" class="alert" style="margin-top: 1rem" hidden role="status"></div>
@@ -79,10 +74,8 @@
                 <tr id="stations-thead-row">
                   <th>Naam</th>
                   <th>Bedrijf</th>
-                  <th>Slug</th>
                   <th>Status</th>
-                  <th>Omschrijving</th>
-                  <th>Gebruikers</th>
+                  <th>Gebr.</th>
                   <th>Tracks</th>
                   <th></th>
                 </tr>
@@ -93,6 +86,57 @@
         </main>
       </div>
     </div>
+
+    <dialog id="station-edit-dialog" class="perm-dialog" style="max-width: 42rem; width: calc(100% - 2rem)">
+      <h2 class="card-title" id="es-title" style="margin-top: 0">Zender bewerken</h2>
+      <p class="empty-state" id="es-slug-hint" style="margin-bottom: 1rem; font-size: 0.85rem"></p>
+      <form id="form-edit-station" class="add-track-form">
+        <input type="hidden" id="es-id" />
+        <div class="form-group">
+          <label class="form-label" for="es-name">Naam</label>
+          <input class="input-field" id="es-name" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="es-desc">Omschrijving</label>
+          <input class="input-field" id="es-desc" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="es-company">Bedrijf</label>
+          <select class="input-field" id="es-company"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="es-status">Status</label>
+          <select class="input-field" id="es-status">
+            <option value="ACTIVE">Actief</option>
+            <option value="INACTIVE">Inactief</option>
+            <option value="ARCHIVED">Gearchiveerd</option>
+          </select>
+        </div>
+        <div class="form-card" style="margin-top: 1rem; padding: 1rem 1.1rem; box-shadow: none">
+          <span class="form-label">Modules &amp; functies</span>
+          <div id="es-features" class="feature-toggle-grid" style="margin-top: 0.5rem"></div>
+        </div>
+        <div class="form-group" id="es-admins-wrap">
+          <span class="form-label">Station admins</span>
+          <ul id="es-admins" class="empty-state" style="margin: 0.35rem 0 0; padding-left: 1.1rem"></ul>
+        </div>
+        <div class="form-row-2" style="margin-top: 1rem">
+          <button type="submit" class="btn btn-primary" style="width: auto">Alles opslaan</button>
+          <button type="button" class="btn-secondary" style="width: auto" id="es-cancel">Sluiten</button>
+        </div>
+        <div id="es-msg" class="alert" style="margin-top: 1rem" hidden role="status"></div>
+      </form>
+    </dialog>
+
+    <dialog id="station-delete-dialog" class="perm-dialog" style="max-width: 28rem">
+      <h2 class="card-title" style="margin-top: 0; color: #da2e20">Zender verwijderen?</h2>
+      <p id="station-delete-body" class="empty-state" style="margin-bottom: 1rem"></p>
+      <div class="form-row-2">
+        <button type="button" class="btn-danger" id="station-delete-confirm">Verwijderen</button>
+        <button type="button" class="btn-secondary" id="station-delete-cancel">Annuleren</button>
+      </div>
+    </dialog>
+
     <script type="module" src="/assets/js/sidebar.js"></script>
     <script type="module" src="/assets/js/stations-page.js"></script>
   </body>

@@ -241,3 +241,33 @@ usersRouter.patch(
     return res.status(403).json({ error: "Geen rechten." });
   })
 );
+
+usersRouter.delete(
+  "/:id",
+  requireRoles(Role.SUPER_ADMIN),
+  asyncHandler(async (req, res) => {
+    const actor = req.user;
+    const id = req.params.id;
+
+    if (id === actor.id) {
+      return res.status(400).json({ error: "Je kunt je eigen account niet verwijderen." });
+    }
+
+    const target = await prisma.user.findUnique({ where: { id } });
+    if (!target) {
+      return res.status(404).json({ error: "Gebruiker niet gevonden." });
+    }
+
+    if (target.role === Role.SUPER_ADMIN) {
+      const superCount = await prisma.user.count({ where: { role: Role.SUPER_ADMIN } });
+      if (superCount <= 1) {
+        return res.status(400).json({
+          error: "De laatste super admin kan niet worden verwijderd. Wijs eerst een andere super admin aan.",
+        });
+      }
+    }
+
+    await prisma.user.delete({ where: { id } });
+    return res.json({ ok: true, message: "Gebruiker verwijderd." });
+  })
+);

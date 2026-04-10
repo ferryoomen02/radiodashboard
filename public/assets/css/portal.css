@@ -1220,6 +1220,46 @@ body.dashboard--hydrating .main-content {
   margin-top: 0.15rem;
 }
 
+.feature-toggle-item:has(input:checked) {
+  border-color: rgba(218, 46, 32, 0.4);
+  background: #fff;
+  box-shadow: 0 0 0 1px rgba(218, 46, 32, 0.08);
+}
+
+.slug-readonly {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  padding: 0.5rem 0.75rem;
+  background: #f9fafb;
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--color-border);
+  word-break: break-all;
+}
+
+.btn-danger {
+  padding: 0.55rem 1.1rem;
+  border-radius: var(--radius-pill);
+  background: #fff;
+  color: #da2e20;
+  border: 1px solid rgba(218, 46, 32, 0.45);
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+.user-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.btn-danger:hover {
+  background: rgba(218, 46, 32, 0.06);
+  border-color: #da2e20;
+}
+
 .perm-dialog {
   border: none;
   border-radius: var(--radius-card);

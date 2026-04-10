@@ -96,6 +96,51 @@
       </form>
     </dialog>
 
+    <dialog id="edit-user-dialog" class="perm-dialog" style="max-width: 28rem">
+      <h2 class="card-title" style="margin-top: 0">Gebruiker bewerken</h2>
+      <form id="form-edit-user" class="add-track-form">
+        <input type="hidden" id="eu-id" />
+        <div class="form-group">
+          <label class="form-label" for="eu-name">Naam</label>
+          <input class="input-field" id="eu-name" required autocomplete="name" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="eu-email">E-mail</label>
+          <input class="input-field" id="eu-email" type="email" required autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="eu-role">Rol</label>
+          <select class="input-field" id="eu-role">
+            <option value="SUPER_ADMIN">Super admin</option>
+            <option value="STATION_ADMIN">Station admin</option>
+            <option value="STAFF">Medewerker</option>
+          </select>
+        </div>
+        <div class="form-group" id="eu-station-wrap">
+          <label class="form-label" for="eu-station">Zender</label>
+          <select class="input-field" id="eu-station"></select>
+        </div>
+        <div class="form-group" id="eu-perms-wrap" hidden>
+          <span class="form-label">Rechten (modules)</span>
+          <div id="eu-perms-grid" class="perm-grid"></div>
+        </div>
+        <div class="form-row-2" style="margin-top: 1rem">
+          <button type="submit" class="btn btn-primary" style="width: auto">Opslaan</button>
+          <button type="button" class="btn-secondary" style="width: auto" id="eu-cancel">Annuleren</button>
+        </div>
+        <div id="eu-msg" class="alert" style="margin-top: 1rem" hidden role="status"></div>
+      </form>
+    </dialog>
+
+    <dialog id="delete-user-dialog" class="perm-dialog" style="max-width: 26rem">
+      <h2 class="card-title" style="margin-top: 0; color: #da2e20">Account verwijderen?</h2>
+      <p id="du-body" class="empty-state" style="margin-bottom: 1rem"></p>
+      <div class="form-row-2">
+        <button type="button" class="btn-danger" id="du-confirm">Verwijderen</button>
+        <button type="button" class="btn-secondary" id="du-cancel">Annuleren</button>
+      </div>
+    </dialog>
+
     <script type="module" src="/assets/js/sidebar.js"></script>
     <script type="module" src="/assets/js/users-page.js"></script>
   </body>
