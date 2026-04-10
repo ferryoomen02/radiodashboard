@@ -227,6 +227,10 @@ async function mountSidebarBody(root) {
     }
   }
 
+  if (typeof window !== "undefined" && window.swSyncSidebarActiveFromRoute) {
+    window.swSyncSidebarActiveFromRoute();
+  }
+
   const tNet0 = now();
   let session;
   let branding;

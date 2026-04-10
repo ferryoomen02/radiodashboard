@@ -25,6 +25,9 @@
     var rail = root.querySelector("[data-sidebar-rail]");
     if (rail) rail.classList.add("sidebar-rail--visible");
     root.dataset.sidebarRestored = "1";
+    if (typeof window !== "undefined" && window.swSyncSidebarActiveFromRoute) {
+      window.swSyncSidebarActiveFromRoute();
+    }
   } catch (e) {
     /* ignore */
   }
