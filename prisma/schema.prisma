@@ -19,6 +19,12 @@ enum InviteStatus {
   EXPIRED
 }
 
+enum StationStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
 model User {
   id           String       @id @default(cuid())
   name         String
@@ -37,17 +43,48 @@ model User {
   @@index([role])
 }
 
-/// Ingeschakelde functies als JSON-array van string-keys (bv. ["dashboard","tracks"]).
+/// Bedrijf (tenant); zenders hangen hieronder.
+model Company {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String    @unique
+  /// Uitbreidbaar: logoUrl, contactEmail, notes, …
+  metadata  Json      @default("{}")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  stations  Station[]
+}
+
+/// Ingeschakelde functies: relationeel in StationFeature; enabledFeatures is gedenormaliseerde cache (zelfde volgorde als keys).
 model Station {
-  id              String        @id @default(cuid())
+  id              String          @id @default(cuid())
+  companyId       String
+  company         Company         @relation(fields: [companyId], references: [id], onDelete: Restrict)
   name            String
+  slug            String          @unique
+  status          StationStatus   @default(ACTIVE)
   description     String?
   currentTrackId  String?
-  enabledFeatures Json          @default("[]")
+  enabledFeatures Json            @default("[]")
+  stationFeatures StationFeature[]
   users           User[]
   tracks          Track[]
   history         PlayHistory[]
   mediaAssets     MediaAsset[]
+
+  @@index([companyId])
+  @@index([status])
+}
+
+/// Welke feature-keys (FeatureDefinition.key) staan aan voor deze zender.
+model StationFeature {
+  stationId  String
+  station    Station @relation(fields: [stationId], references: [id], onDelete: Cascade)
+  featureKey String
+  createdAt  DateTime @default(now())
+
+  @@id([stationId, featureKey])
+  @@index([featureKey])
 }
 
 model Track {

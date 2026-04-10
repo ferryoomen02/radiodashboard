@@ -41,6 +41,7 @@ async function main() {
   const emailInput = document.getElementById("reg-email");
   if (emailInput) {
     emailInput.value = data.email || "";
+    emailInput.readOnly = true;
   }
   show(form, true);
 

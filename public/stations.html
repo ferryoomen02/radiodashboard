@@ -21,7 +21,7 @@
       <div class="main-wrap">
         <header class="main-header">
           <h1 class="page-title" id="stations-page-title">Zenders</h1>
-          <p class="header-date">Beheer radiozenders (naam en omschrijving)</p>
+          <p class="header-date">Radiozenders per bedrijf — beheer naam, slug en status (super admin).</p>
         </header>
         <main class="main-content">
           <div id="stations-assign-admin" class="form-card" hidden>
@@ -48,15 +48,23 @@
           <div id="stations-super-create" class="form-card" hidden>
             <h2 class="card-title" style="margin-top: 0">Nieuwe zender</h2>
             <form id="form-new-station" class="add-track-form">
+              <div class="form-group">
+                <label class="form-label" for="new-station-company">Bedrijf</label>
+                <select class="input-field" id="new-station-company" required></select>
+              </div>
               <div class="form-row-2">
                 <div class="form-group" style="margin-bottom: 0">
                   <label class="form-label" for="new-station-name">Naam</label>
                   <input class="input-field" id="new-station-name" required autocomplete="off" />
                 </div>
                 <div class="form-group" style="margin-bottom: 0">
-                  <label class="form-label" for="new-station-desc">Omschrijving (optioneel)</label>
-                  <input class="input-field" id="new-station-desc" autocomplete="off" />
+                  <label class="form-label" for="new-station-slug">Slug (URL)</label>
+                  <input class="input-field" id="new-station-slug" placeholder="automatisch indien leeg" autocomplete="off" />
                 </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="new-station-desc">Omschrijving (optioneel)</label>
+                <input class="input-field" id="new-station-desc" autocomplete="off" />
               </div>
               <button type="submit" class="btn btn-primary" style="width: auto; margin-top: 1rem">
                 Zender aanmaken
@@ -70,6 +78,9 @@
               <thead>
                 <tr id="stations-thead-row">
                   <th>Naam</th>
+                  <th>Bedrijf</th>
+                  <th>Slug</th>
+                  <th>Status</th>
                   <th>Omschrijving</th>
                   <th>Gebruikers</th>
                   <th>Tracks</th>

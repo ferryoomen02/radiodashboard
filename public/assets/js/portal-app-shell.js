@@ -13,6 +13,7 @@ import { SONICWAVE_DEBUG } from "./portal-debug.js";
 export const PORTAL_SHELL_ROUTES = {
   "/dashboard": "/assets/js/dashboard.js",
   "/stations": "/assets/js/stations-page.js",
+  "/companies": "/assets/js/companies-page.js",
   "/users": "/assets/js/users-page.js",
   "/account": "/assets/js/account-page.js",
   "/station-features": "/assets/js/station-features-page.js",
@@ -24,6 +25,19 @@ export const PORTAL_SHELL_ROUTES = {
   "/media": "/assets/js/media-page.js",
   "/settings": "/assets/js/settings-page.js",
 };
+
+/** Zender bewerken: /station/:id */
+const STATION_MANAGE_PATH = /^\/station\/[^/]+$/;
+
+export function resolveShellRoute(pathname) {
+  const p = normalizePathname(pathname);
+  const direct = PORTAL_SHELL_ROUTES[p];
+  if (direct) return { module: direct };
+  if (STATION_MANAGE_PATH.test(p)) {
+    return { module: "/assets/js/station-manage-page.js" };
+  }
+  return null;
+}
 
 function normalizePathname(p) {
   if (!p || p === "/") return p || "/";
@@ -43,11 +57,6 @@ function isLoginDocument(doc) {
   return !!(doc.querySelector(".login-page") || doc.querySelector("#login-form"));
 }
 
-function getRouteModule(pathname) {
-  const p = normalizePathname(pathname);
-  return PORTAL_SHELL_ROUTES[p] || null;
-}
-
 function shouldHandleShellLink(anchor, e) {
   if (!anchor || anchor.tagName !== "A") return false;
   if (e.defaultPrevented) return false;
@@ -64,7 +73,7 @@ function shouldHandleShellLink(anchor, e) {
   }
   if (u.origin !== window.location.origin) return false;
   const path = normalizePathname(u.pathname);
-  return getRouteModule(path) !== null;
+  return resolveShellRoute(path) !== null;
 }
 
 /**
@@ -74,7 +83,8 @@ function shouldHandleShellLink(anchor, e) {
 export async function navigateShell(pathname, opts = {}) {
   const pop = opts.pop === true;
   const path = normalizePathname(pathname);
-  const modFile = getRouteModule(path);
+  const resolved = resolveShellRoute(path);
+  const modFile = resolved?.module;
   if (!modFile || shellNavigateLocked) {
     swShellLog("navigate:skip", { path, reason: !modFile ? "geen route" : "locked" });
     return;
@@ -177,7 +187,7 @@ export async function navigateShell(pathname, opts = {}) {
 
 function onPopState() {
   const path = normalizePathname(window.location.pathname);
-  if (!getRouteModule(path)) return;
+  if (!resolveShellRoute(path)) return;
   swShellLog("popstate", { path });
   void navigateShell(path, { pop: true });
 }

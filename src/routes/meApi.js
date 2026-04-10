@@ -3,7 +3,7 @@ import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { isSuperAdmin, isStationAdmin } from "../constants/roles.js";
 import { DEFAULT_STATION_FEATURES, FEATURE_LABELS } from "../constants/featureKeys.js";
-import { normalizeEnabledFeatures } from "../lib/featureService.js";
+import { getEnabledFeatureKeysForStation } from "../lib/stationFeatureStore.js";
 import { normalizePermissions } from "../lib/permissions.js";
 import { asyncHandler } from "../asyncHandler.js";
 
@@ -59,13 +59,13 @@ meRouter.get(
 
     const station = await prisma.station.findUnique({
       where: { id: stationId },
-      select: { id: true, enabledFeatures: true },
+      select: { id: true },
     });
     if (!station) {
       return res.status(404).json({ error: "Zender niet gevonden." });
     }
 
-    let enabledKeys = normalizeEnabledFeatures(station.enabledFeatures);
+    let enabledKeys = await getEnabledFeatureKeysForStation(station.id);
 
     if (!isStationAdmin(req.user)) {
       const perms = normalizePermissions(req.user.permissions);

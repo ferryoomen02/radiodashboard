@@ -11,6 +11,7 @@ import { meRouter } from "./routes/meApi.js";
 import { featureDefinitionsRouter } from "./routes/featureDefinitionsApi.js";
 import { invitesRouter } from "./routes/invitesApi.js";
 import { mediaRouter } from "./routes/mediaApi.js";
+import { companiesRouter } from "./routes/companiesApi.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.join(__dirname, "..");
@@ -65,6 +66,8 @@ app.get("/files", sendPage("files.html"));
 app.get("/site-settings", sendPage("site-settings.html"));
 app.get("/media", sendPage("media.html"));
 app.get("/settings", sendPage("settings.html"));
+app.get("/companies", sendPage("companies.html"));
+app.get("/station/:id", sendPage("station-manage.html"));
 
 app.get("/login-test", (_req, res) => {
   res.redirect(302, "/login");
@@ -75,6 +78,7 @@ app.use("/api", platformSettingsRouter);
 app.use("/api", meRouter);
 app.use("/api/feature-definitions", featureDefinitionsRouter);
 app.use("/api/invites", invitesRouter);
+app.use("/api/companies", companiesRouter);
 app.use("/api/media", mediaRouter);
 app.use("/api/stations", stationsRouter);
 app.use("/api/users", usersRouter);

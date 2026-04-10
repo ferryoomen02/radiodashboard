@@ -20,6 +20,7 @@ const superCreate = document.getElementById("stations-super-create");
 const formNew = document.getElementById("form-new-station");
 const newMsg = document.getElementById("new-station-msg");
 const titleEl = document.getElementById("stations-page-title");
+const companySelect = document.getElementById("new-station-company");
 
 function applyStationsRoleUi() {
   isSuper = auth?.user?.role === "SUPER_ADMIN";
@@ -27,8 +28,25 @@ function applyStationsRoleUi() {
     superCreate.hidden = false;
     assignCard.hidden = false;
     titleEl.textContent = "Zenders";
+    theadRow.innerHTML = `
+      <th>Naam</th>
+      <th>Bedrijf</th>
+      <th>Slug</th>
+      <th>Status</th>
+      <th>Omschrijving</th>
+      <th>Gebr.</th>
+      <th>Tracks</th>
+      <th></th>
+    `;
   } else {
     titleEl.textContent = "Zenderinstellingen";
+    theadRow.innerHTML = `
+      <th>Naam</th>
+      <th>Omschrijving</th>
+      <th>Gebruikers</th>
+      <th>Tracks</th>
+      <th></th>
+    `;
   }
 }
 
@@ -48,7 +66,25 @@ function hideAlert() {
   alertEl.hidden = true;
 }
 
-const colCount = () => (isSuper ? 6 : 5);
+function colCount() {
+  return isSuper ? 8 : 5;
+}
+
+function statusNl(s) {
+  const m = { ACTIVE: "Actief", INACTIVE: "Inactief", ARCHIVED: "Gearchiveerd" };
+  return m[s] || s;
+}
+
+async function loadCompaniesIntoSelect() {
+  if (!companySelect) return;
+  const res = await apiFetch("/api/companies");
+  if (!res.ok) return;
+  const data = await res.json();
+  const list = data.companies || [];
+  companySelect.innerHTML = list
+    .map((c) => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`)
+    .join("");
+}
 
 async function loadStations() {
   hideAlert();
@@ -66,24 +102,42 @@ async function loadStations() {
     tbody.innerHTML = `<tr><td colspan="${colCount()}" class="empty-state">Nog geen zenders.</td></tr>`;
     return;
   }
-  tbody.innerHTML = stations
-    .map(
-      (s) => `
+
+  if (isSuper) {
+    tbody.innerHTML = stations
+      .map(
+        (s) => `
+    <tr data-id="${escapeHtml(s.id)}">
+      <td><input class="input-field" data-field="name" value="${escapeHtml(s.name)}" /></td>
+      <td>${escapeHtml(s.company?.name || "—")}</td>
+      <td><code style="font-size:0.8rem">${escapeHtml(s.slug || "")}</code></td>
+      <td>${escapeHtml(statusNl(s.status))}</td>
+      <td><input class="input-field" data-field="description" value="${escapeHtml(s.description || "")}" placeholder="—" /></td>
+      <td>${s.userCount ?? "—"}</td>
+      <td>${s.trackCount ?? "—"}</td>
+      <td>
+        <a class="btn-secondary" style="display:inline-block;text-decoration:none;padding:0.35rem 0.75rem;margin-right:0.35rem" href="/station/${encodeURIComponent(s.id)}">Beheren</a>
+        <button type="button" class="btn-secondary btn-save-station">Opslaan</button>
+      </td>
+    </tr>
+  `
+      )
+      .join("");
+  } else {
+    tbody.innerHTML = stations
+      .map(
+        (s) => `
     <tr data-id="${escapeHtml(s.id)}">
       <td><input class="input-field" data-field="name" value="${escapeHtml(s.name)}" /></td>
       <td><input class="input-field" data-field="description" value="${escapeHtml(s.description || "")}" placeholder="—" /></td>
       <td>${s.userCount ?? "—"}</td>
       <td>${s.trackCount ?? "—"}</td>
-      ${
-        isSuper
-          ? `<td><a class="btn-secondary" style="display:inline-block;text-decoration:none;padding:0.35rem 0.75rem" href="/station-features?stationId=${encodeURIComponent(s.id)}">Functies</a></td>`
-          : ""
-      }
       <td><button type="button" class="btn-secondary btn-save-station">Opslaan</button></td>
     </tr>
   `
-    )
-    .join("");
+      )
+      .join("");
+  }
 
   tbody.querySelectorAll(".btn-save-station").forEach((btn) => {
     btn.addEventListener("click", () => saveRow(btn.closest("tr")));
@@ -116,12 +170,17 @@ async function saveRow(tr) {
 formNew.addEventListener("submit", async (e) => {
   e.preventDefault();
   newMsg.hidden = true;
+  const companyId = companySelect?.value;
   const name = document.getElementById("new-station-name").value.trim();
+  let slug = document.getElementById("new-station-slug").value.trim();
   const description = document.getElementById("new-station-desc").value.trim();
-  if (!name) return;
+  if (!companyId || !name) return;
+  const body = { companyId, name, description: description || undefined };
+  if (slug) body.slug = slug;
   const res = await apiFetch("/api/stations", {
     method: "POST",
-    body: JSON.stringify({ name, description: description || undefined }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
   });
   if (handleAuthFailure(res)) return;
   const data = await res.json().catch(() => ({}));
@@ -200,11 +259,8 @@ async function boot() {
       return;
     }
   }
-  if (isSuper && theadRow) {
-    const lastTh = theadRow.querySelector("th:last-child");
-    const th = document.createElement("th");
-    th.textContent = "Functies";
-    theadRow.insertBefore(th, lastTh);
+  if (isSuper) {
+    await loadCompaniesIntoSelect();
   }
   await fillAssignStations();
   await loadStations();

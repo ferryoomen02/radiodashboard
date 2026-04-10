@@ -1,20 +1,10 @@
-import { prisma } from "../db.js";
+import { getEnabledFeatureKeysForStation } from "./stationFeatureStore.js";
 
-export function normalizeEnabledFeatures(value) {
-  if (value == null) return [];
-  if (Array.isArray(value)) {
-    return value.filter((x) => typeof x === "string" && x.length > 0);
-  }
-  return [];
-}
+export { normalizeEnabledFeatures } from "./featureNormalize.js";
 
 export async function stationHasAllFeatures(stationId, keys) {
   if (!stationId || !keys?.length) return true;
-  const s = await prisma.station.findUnique({
-    where: { id: stationId },
-    select: { enabledFeatures: true },
-  });
-  const enabled = normalizeEnabledFeatures(s?.enabledFeatures);
+  const enabled = await getEnabledFeatureKeysForStation(stationId);
   return keys.every((k) => enabled.includes(k));
 }
 

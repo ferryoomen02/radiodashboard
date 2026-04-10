@@ -3,7 +3,10 @@ import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRoles } from "../middleware/requireRoles.js";
 import { Role } from "../constants/roles.js";
-import { normalizeEnabledFeatures } from "../lib/featureService.js";
+import {
+  getEnabledFeatureKeysForStation,
+  replaceStationFeatureKeys,
+} from "../lib/stationFeatureStore.js";
 import { asyncHandler } from "../asyncHandler.js";
 
 export const featureDefinitionsRouter = Router();
@@ -64,13 +67,11 @@ featureDefinitionsRouter.delete(
       return res.status(400).json({ error: "Ingebouwde features kun je niet verwijderen." });
     }
     await prisma.featureDefinition.delete({ where: { key } });
-    const stations = await prisma.station.findMany({ select: { id: true, enabledFeatures: true } });
+    const stations = await prisma.station.findMany({ select: { id: true } });
     for (const s of stations) {
-      const arr = normalizeEnabledFeatures(s.enabledFeatures).filter((k) => k !== key);
-      await prisma.station.update({
-        where: { id: s.id },
-        data: { enabledFeatures: arr },
-      });
+      const keys = await getEnabledFeatureKeysForStation(s.id);
+      const filtered = keys.filter((k) => k !== key);
+      await replaceStationFeatureKeys(s.id, filtered);
     }
     return res.json({ ok: true });
   })

@@ -38,6 +38,15 @@
                   placeholder="collega@voorbeeld.nl"
                 />
               </div>
+              <div class="form-group">
+                <label class="form-label" for="invite-role">Rol</label>
+                <select class="input-field" id="invite-role">
+                  <option value="SUPER_ADMIN" selected>Super admin (platformbeheer)</option>
+                </select>
+                <p class="empty-state" style="margin: 0.35rem 0 0; font-size: 0.85rem">
+                  Uitnodiging per e-mail met registratielink; account krijgt deze rol na acceptatie.
+                </p>
+              </div>
               <button type="submit" class="btn btn-primary" style="width: auto">Uitnodiging aanmaken</button>
               <div id="invite-msg" class="alert" style="margin-top: 1rem" hidden role="status"></div>
             </form>

@@ -65,10 +65,11 @@ form.addEventListener("submit", async (e) => {
   const email = document.getElementById("invite-email").value.trim().toLowerCase();
   if (!email) return;
 
+  const role = document.getElementById("invite-role")?.value || "SUPER_ADMIN";
   const res = await apiFetch("/api/invites", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({ email, role }),
   });
   if (handleAuthFailure(res)) return;
   const data = await res.json().catch(() => ({}));

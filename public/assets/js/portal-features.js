@@ -7,6 +7,7 @@ export const SUPER_NAV_FALLBACK_KEYS = [
   "dashboard",
   "tracks",
   "stations",
+  "companies",
   "users",
   "invites",
   "media",

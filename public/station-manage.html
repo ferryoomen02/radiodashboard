@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="nl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Zender bewerken — SonicWave</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/assets/css/portal.css" />
+  </head>
+  <body data-page="station-manage">
+    <div class="dashboard">
+      <aside id="sidebar-root" class="sidebar" aria-label="Hoofdnavigatie"></aside>
+      <script src="/assets/js/sidebar-route-sync.js"></script>
+      <script src="/assets/js/sidebar-restore.js"></script>
+      <script type="module" src="/assets/js/portal-navigation.js"></script>
+      <div class="main-wrap">
+        <header class="main-header">
+          <p class="header-kicker"><a href="/stations" class="user-card-link">← Zenders</a></p>
+          <h1 class="page-title" id="st-title">Zender</h1>
+          <p class="header-date" id="st-sub">Laden…</p>
+        </header>
+        <main class="main-content">
+          <div id="st-alert" class="alert alert-error" hidden role="alert"></div>
+          <div class="form-card" style="max-width: 40rem">
+            <h2 class="card-title" style="margin-top: 0">Gegevens</h2>
+            <form id="form-station" class="add-track-form">
+              <div class="form-group">
+                <label class="form-label" for="st-name">Naam</label>
+                <input class="input-field" id="st-name" required />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="st-slug">Slug</label>
+                <input class="input-field" id="st-slug" required />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="st-company">Bedrijf</label>
+                <select class="input-field" id="st-company"></select>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="st-status">Status</label>
+                <select class="input-field" id="st-status">
+                  <option value="ACTIVE">Actief</option>
+                  <option value="INACTIVE">Inactief</option>
+                  <option value="ARCHIVED">Gearchiveerd</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="st-desc">Omschrijving</label>
+                <input class="input-field" id="st-desc" />
+              </div>
+              <button type="submit" class="btn btn-primary" style="width: auto">Opslaan</button>
+              <div id="st-msg" class="alert" style="margin-top: 1rem" hidden role="status"></div>
+            </form>
+          </div>
+          <div class="form-card" style="margin-top: 1.5rem">
+            <h2 class="card-title" style="margin-top: 0">Modules &amp; functies</h2>
+            <p class="empty-state" style="margin: 0 0 1rem">
+              Schakel in wat deze zender mag gebruiken in het portaal en API.
+            </p>
+            <div id="st-features" class="feature-toggle-grid"></div>
+            <button type="button" class="btn btn-primary" id="st-save-features" style="margin-top: 1rem">
+              Functies opslaan
+            </button>
+          </div>
+        </main>
+      </div>
+    </div>
+    <script type="module" src="/assets/js/sidebar.js"></script>
+    <script type="module" src="/assets/js/station-manage-page.js"></script>
+  </body>
+</html>

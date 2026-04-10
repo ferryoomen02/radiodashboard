@@ -74,6 +74,15 @@ invitesRouter.post(
       return res.status(400).json({ error: "Er is al een open uitnodiging voor dit adres." });
     }
 
+    const roleRaw = req.body?.role;
+    const role =
+      roleRaw === Role.SUPER_ADMIN || roleRaw === "SUPER_ADMIN"
+        ? Role.SUPER_ADMIN
+        : null;
+    if (!role) {
+      return res.status(400).json({ error: "Alleen uitnodigingen met rol SUPER_ADMIN zijn toegestaan." });
+    }
+
     const token = crypto.randomBytes(32).toString("hex");
     const tokenHash = hashToken(token);
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
@@ -82,7 +91,7 @@ invitesRouter.post(
       data: {
         email,
         tokenHash,
-        role: Role.SUPER_ADMIN,
+        role,
         status: "PENDING",
         expiresAt,
         createdById: req.user.id,
