@@ -46,6 +46,7 @@ if (!bootAuth?.token) {
   const els = {
     greeting: document.getElementById("greeting-name"),
     headerBadge: document.getElementById("header-badge"),
+    headerContextBadge: document.getElementById("header-context-badge"),
     headerWelcomeText: document.getElementById("header-welcome-text"),
     date: document.getElementById("header-date"),
     superBar: document.getElementById("super-station-bar"),
@@ -83,6 +84,57 @@ if (!bootAuth?.token) {
     return div.innerHTML;
   }
 
+  function updateHeaderContextBadge(auth, stationNameOverride) {
+    if (!els.headerContextBadge) return;
+    let text = stationNameOverride;
+    if (text == null || text === "") {
+      const role = auth?.user?.role;
+      if (role === "SUPER_ADMIN") {
+        const opt = els.superSelect?.selectedOptions?.[0];
+        text = (opt?.textContent || "").trim() || roleLabelNl(role) || "";
+      } else {
+        text = auth?.station?.name || roleLabelNl(role) || "";
+      }
+    }
+    if (!text) {
+      els.headerContextBadge.hidden = true;
+      els.headerContextBadge.textContent = "";
+      return;
+    }
+    els.headerContextBadge.textContent = text;
+    els.headerContextBadge.hidden = false;
+  }
+
+  function skeletonNowPlaying() {
+    return `<div class="skeleton-now" aria-hidden="true">
+      <div class="skeleton-block"></div>
+      <div class="skeleton-now-lines">
+        <div class="skeleton-line skeleton-line--md"></div>
+        <div class="skeleton-line skeleton-line--lg"></div>
+        <div class="skeleton-line skeleton-line--sm"></div>
+      </div>
+    </div>`;
+  }
+
+  function skeletonStationBlock() {
+    return `<div class="skeleton-stack" aria-hidden="true">
+      <div class="skeleton-line skeleton-line--sm"></div>
+      <div class="skeleton-line skeleton-line--lg"></div>
+      <div class="skeleton-line skeleton-line--md"></div>
+      <div class="skeleton-line skeleton-line--lg"></div>
+    </div>`;
+  }
+
+  function skeletonHistoryBlock() {
+    return `<div class="skeleton-stack" aria-hidden="true">
+      <div class="skeleton-line skeleton-line--lg"></div>
+      <div class="skeleton-line skeleton-line--md"></div>
+      <div class="skeleton-line skeleton-line--lg"></div>
+      <div class="skeleton-line skeleton-line--md"></div>
+      <div class="skeleton-line skeleton-line--lg"></div>
+    </div>`;
+  }
+
   function renderNowPlaying(np, hist) {
     const historyHint =
       hist?.length > 0
@@ -106,7 +158,7 @@ if (!bootAuth?.token) {
         <p class="now-artist">${escapeHtml(np.artist)}</p>
         ${
           np.durationSeconds != null
-            ? `<p class="now-artist" style="margin-top:0.5rem;font-size:0.85rem">Duur: ${np.durationSeconds}s</p>`
+            ? `<p class="now-meta">Duur: ${np.durationSeconds}s</p>`
             : ""
         }
       </div>
@@ -222,6 +274,7 @@ if (!bootAuth?.token) {
       setActiveStationId(els.superSelect.value);
       invalidatePageSession("actieve zender gewijzigd");
       swLog("dashboard", "actieve zender gewijzigd", els.superSelect.value);
+      updateHeaderContextBadge(getAuth());
       loadDashboard();
     };
 
@@ -298,8 +351,10 @@ if (!bootAuth?.token) {
       els.userEmail.textContent = a.user?.email || "—";
       els.userDisplayName.textContent = greetingName(a);
       els.userRolePill.textContent = roleLabelNl(a.user?.role) || "—";
+      updateHeaderContextBadge(a);
 
       const sid = await resolveActiveStationId(a);
+      updateHeaderContextBadge(getAuth());
       /** resolveActiveStationId kan showDashboardError hebben getoond (bijv. /api/stations mislukt) */
       if (els.stationInfo.querySelector(".alert-error")) {
         return;
@@ -314,9 +369,9 @@ if (!bootAuth?.token) {
         return;
       }
 
-      els.stationInfo.innerHTML = '<p class="loading-shimmer">Laden…</p>';
-      els.nowPlayingRoot.innerHTML = '<p class="loading-shimmer">Laden…</p>';
-      els.historyContainer.innerHTML = "";
+      els.stationInfo.innerHTML = skeletonStationBlock();
+      els.nowPlayingRoot.innerHTML = skeletonNowPlaying();
+      els.historyContainer.innerHTML = skeletonHistoryBlock();
 
       const url = withStationQuery("/radio", sid);
       swLog("dashboard", "loadDashboard: GET", url);
@@ -359,6 +414,8 @@ if (!bootAuth?.token) {
 
       const st = data.station;
       swLog("dashboard", "loadDashboard: data OK", { station: st?.name });
+
+      updateHeaderContextBadge(a, st?.name);
 
       els.stationInfo.innerHTML = `
     <div class="station-meta">

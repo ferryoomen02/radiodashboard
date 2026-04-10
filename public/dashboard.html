@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/assets/css/portal.css" />
@@ -18,12 +18,18 @@
 
       <div class="main-wrap">
         <header class="main-header">
+          <div class="header-top">
+            <p class="header-kicker">Overzicht</p>
+            <div class="header-meta">
+              <time class="header-date" id="header-date"></time>
+              <span class="badge badge--neutral" id="header-context-badge" hidden></span>
+              <span class="badge" id="header-badge">SonicWave</span>
+            </div>
+          </div>
           <div class="greeting-row">
-            <h1 id="greeting-line"><span id="greeting-name">Laden…</span></h1>
-            <span class="badge" id="header-badge">SonicWave</span>
+            <h1 class="page-heading" id="greeting-line"><span id="greeting-name">Laden…</span></h1>
           </div>
           <p class="header-welcome-text" id="header-welcome-text" hidden></p>
-          <p class="header-date" id="header-date"></p>
           <div id="super-station-bar" class="station-bar" hidden>
             <label for="active-station-select">Actieve zender</label>
             <select id="active-station-select" aria-label="Kies zender voor dashboard"></select>
@@ -32,41 +38,53 @@
 
         <main class="main-content">
           <div class="card-grid">
-            <section class="card card-span-4" aria-labelledby="station-card-title">
-              <h2 class="card-title" id="station-card-title">Station</h2>
-              <div id="station-info-body"></div>
-            </section>
-
-            <section class="card card-span-5" aria-labelledby="now-card-title">
-              <h2 class="card-title" id="now-card-title">Nu speelt</h2>
+            <section class="card card-span-7 card--highlight" aria-labelledby="now-card-title">
+              <div class="card__head">
+                <h2 class="card-title" id="now-card-title">Nu speelt</h2>
+                <p class="card-subtitle">Live status van je uitzending</p>
+              </div>
               <div id="now-playing-root"></div>
             </section>
 
-            <section class="card card-span-3" aria-labelledby="user-card-title">
-              <h2 class="card-title" id="user-card-title">Account</h2>
+            <section class="card card-span-5" aria-labelledby="user-card-title">
+              <div class="card__head">
+                <h2 class="card-title" id="user-card-title">Account</h2>
+                <p class="card-subtitle">Jouw profiel op het platform</p>
+              </div>
               <div class="user-placeholder">
                 <div class="user-avatar" aria-hidden="true">👤</div>
-                <p style="margin: 0; font-weight: 600; font-size: 0.9rem" id="user-display-name">—</p>
+                <p class="user-card-name" id="user-display-name">—</p>
                 <p class="email" id="user-email"></p>
-                <p style="margin: 0.35rem 0 0">
+                <p class="user-role-row">
                   <span class="role-pill" id="user-role-pill">—</span>
                 </p>
-                <p style="font-size: 0.75rem; color: var(--color-text-muted); margin: 0.75rem 0 0">
-                  <a href="/account" style="color: var(--color-accent-hover); font-weight: 600">Wachtwoord wijzigen →</a>
+                <p class="user-card-actions">
+                  <a href="/account" class="user-card-link">Wachtwoord wijzigen →</a>
                 </p>
               </div>
             </section>
 
-            <section class="card card-span-7" aria-labelledby="history-card-title">
-              <h2 class="card-title" id="history-card-title">Trackgeschiedenis</h2>
+            <section class="card card-span-8" aria-labelledby="history-card-title">
+              <div class="card__head">
+                <h2 class="card-title" id="history-card-title">Trackgeschiedenis</h2>
+                <p class="card-subtitle">Recente nummers op dit station</p>
+              </div>
               <div id="history-container"></div>
             </section>
 
-            <section class="card card-span-5" aria-labelledby="add-card-title">
-              <h2 class="card-title" id="add-card-title">Nummer toevoegen</h2>
-              <p class="empty-state" style="margin: 0 0 1rem">
-                Wordt direct <strong>nu speelt</strong>; het vorige nummer gaat naar de geschiedenis.
-              </p>
+            <section class="card card-span-4" aria-labelledby="station-card-title">
+              <div class="card__head">
+                <h2 class="card-title" id="station-card-title">Station</h2>
+                <p class="card-subtitle">Context &amp; bibliotheek</p>
+              </div>
+              <div id="station-info-body"></div>
+            </section>
+
+            <section class="card card-span-12 card--add-track" aria-labelledby="add-card-title">
+              <div class="card__head">
+                <h2 class="card-title" id="add-card-title">Nummer toevoegen</h2>
+                <p class="card-subtitle">Plaats direct on air; het vorige nummer gaat naar de geschiedenis.</p>
+              </div>
               <form id="add-track-form" class="add-track-form">
                 <div class="form-group">
                   <label class="form-label" for="track-artist">Artiest</label>
@@ -91,8 +109,7 @@
                 <div id="add-track-error" class="alert alert-error" hidden role="alert"></div>
                 <div
                   id="add-track-success"
-                  class="alert"
-                  style="background: var(--color-accent-soft); color: var(--color-accent-hover)"
+                  class="alert alert-success"
                   hidden
                   role="status"
                 ></div>
