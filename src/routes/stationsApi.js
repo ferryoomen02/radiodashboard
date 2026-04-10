@@ -27,6 +27,9 @@ function stationListItem(s) {
     slug: s.slug,
     status: s.status,
     description: s.description,
+    publicLogoUrl: s.publicLogoUrl ?? null,
+    primaryColor: s.primaryColor ?? null,
+    accentColor: s.accentColor ?? null,
     companyId: s.companyId,
     company: s.company
       ? { id: s.company.id, name: s.company.name, slug: s.company.slug }
@@ -266,6 +269,33 @@ stationsRouter.patch(
     if (descRaw !== undefined) {
       data.description =
         typeof descRaw === "string" && descRaw.trim() ? descRaw.trim() : null;
+    }
+
+    const hexOk = (v) => typeof v === "string" && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v.trim());
+    if (req.body?.publicLogoUrl !== undefined) {
+      const v = req.body.publicLogoUrl;
+      if (v === null || v === "") {
+        data.publicLogoUrl = null;
+      } else if (typeof v === "string") {
+        const t = v.trim();
+        data.publicLogoUrl = t.length ? t : null;
+      }
+    }
+    if (req.body?.primaryColor !== undefined) {
+      const v = req.body.primaryColor;
+      if (v === null || v === "") data.primaryColor = null;
+      else if (typeof v === "string" && hexOk(v)) data.primaryColor = v.trim();
+      else if (typeof v === "string" && v.trim()) {
+        return res.status(400).json({ error: "primaryColor moet een geldige hex-kleur zijn (#rgb of #rrggbb)." });
+      }
+    }
+    if (req.body?.accentColor !== undefined) {
+      const v = req.body.accentColor;
+      if (v === null || v === "") data.accentColor = null;
+      else if (typeof v === "string" && hexOk(v)) data.accentColor = v.trim();
+      else if (typeof v === "string" && v.trim()) {
+        return res.status(400).json({ error: "accentColor moet een geldige hex-kleur zijn (#rgb of #rrggbb)." });
+      }
     }
 
     if (isSuperAdmin(user)) {

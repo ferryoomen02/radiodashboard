@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="nl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Zender dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/assets/css/station-portal.css" />
+  </head>
+  <body class="station-dash-wrap station-portal-scope" id="sd-root">
+    <header class="station-dash-top" id="sd-top">
+      <div class="station-dash-brand">
+        <img id="sd-logo" alt="" hidden />
+        <div>
+          <h1 id="sd-title">…</h1>
+          <span id="sd-sub">Intern dashboard</span>
+        </div>
+      </div>
+      <nav class="station-dash-nav" id="sd-nav">
+        <a href="/">Publieke site</a>
+        <button type="button" id="sd-logout">Uitloggen</button>
+      </nav>
+    </header>
+    <main class="station-dash-main">
+      <div id="sd-error" class="station-card" hidden style="border-color: #fecaca; background: #fef2f2">
+        <h2 style="color: #b91c1c">Geen toegang tot deze zender</h2>
+        <p id="sd-error-msg" class="placeholder-line" style="color: #991b1b"></p>
+      </div>
+      <div id="sd-content">
+        <h2 id="sd-greeting">…</h2>
+        <section class="station-card" style="margin-bottom: 1rem">
+          <h2>Overzicht</h2>
+          <p class="placeholder-line">
+            Dit is het interne dashboard voor deze zender. Vanaf hier kun je later snelkoppelingen naar tracks,
+            media en andere modules toevoegen (afhankelijk van ingeschakelde functies).
+          </p>
+        </section>
+        <section class="station-card" id="sd-super-banner" hidden>
+          <h2>Centraal beheer</h2>
+          <p class="placeholder-line">
+            Als super admin beheer je alle zenders via het centrale portaal.
+          </p>
+          <p style="margin-top: 0.75rem">
+            <a class="station-btn station-btn--outline" id="sd-central-link" href="#">Open centraal portaal</a>
+          </p>
+        </section>
+        <section class="station-card">
+          <h2>Snel naar</h2>
+          <p class="placeholder-line" id="sd-features-hint"></p>
+        </section>
+      </div>
+    </main>
+    <script type="module" src="/assets/js/station-dashboard-page.js"></script>
+  </body>
+</html>

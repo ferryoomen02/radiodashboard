@@ -1,0 +1,288 @@
+/**
+ * Publieke zender-site + zender-login + zender-dashboard (subdomein).
+ * Variabelen: --sp-primary, --sp-accent (gezet via JS uit station).
+ */
+
+.station-portal-scope {
+  --sp-primary: #1e293b;
+  --sp-accent: #da2e20;
+  --sp-surface: #ffffff;
+  --sp-muted: #64748b;
+}
+
+.station-hero {
+  background: linear-gradient(155deg, var(--sp-primary) 0%, color-mix(in srgb, var(--sp-primary) 75%, #000) 100%);
+  color: #fff;
+  padding: clamp(2.5rem, 6vw, 4.5rem) 1.5rem;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.station-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 80% 60% at 50% 120%, var(--sp-accent), transparent 55%);
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.station-hero-inner {
+  position: relative;
+  z-index: 1;
+  max-width: 40rem;
+  margin: 0 auto;
+}
+
+.station-hero-logo {
+  width: 5rem;
+  height: 5rem;
+  object-fit: contain;
+  margin: 0 auto 1.25rem;
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.12);
+  padding: 0.5rem;
+}
+
+.station-hero-logo-slot {
+  width: 5rem;
+  height: 5rem;
+  margin: 0 auto 1.25rem;
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.station-hero h1 {
+  margin: 0 0 0.75rem;
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.station-hero p {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.55;
+  opacity: 0.92;
+}
+
+.station-public-body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: Inter, system-ui, sans-serif;
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.station-sections {
+  max-width: 56rem;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 3rem;
+  display: grid;
+  gap: 1.25rem;
+}
+
+.station-card {
+  background: var(--sp-surface);
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  padding: 1.35rem 1.5rem;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.station-card h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--sp-primary);
+}
+
+.station-card p,
+.station-card .placeholder-line {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--sp-muted);
+  line-height: 1.5;
+}
+
+.station-placeholder-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.station-ph {
+  min-height: 4.5rem;
+  border-radius: 0.5rem;
+  background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
+  background-size: 200% 100%;
+  animation: station-shimmer 1.2s ease-in-out infinite;
+}
+
+@keyframes station-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+.station-public-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+  margin-top: 1.75rem;
+}
+
+.station-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.65rem 1.35rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.station-btn:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+.station-btn--primary {
+  background: var(--sp-accent);
+  color: #fff;
+}
+
+.station-btn--ghost {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.station-btn--outline {
+  background: #fff;
+  color: var(--sp-accent);
+  border: 1px solid color-mix(in srgb, var(--sp-accent) 35%, #e2e8f0);
+}
+
+/* Zender-dashboard */
+.station-dash-wrap {
+  min-height: 100vh;
+  background: #f1f5f9;
+}
+
+.station-dash-top {
+  background: var(--sp-primary);
+  color: #fff;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.station-dash-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.station-dash-brand img {
+  width: 2.5rem;
+  height: 2.5rem;
+  object-fit: contain;
+  border-radius: 0.4rem;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.station-dash-brand h1 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.station-dash-brand span {
+  display: block;
+  font-size: 0.75rem;
+  opacity: 0.8;
+  font-weight: 400;
+}
+
+.station-dash-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.station-dash-nav a,
+.station-dash-nav button {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.95);
+  text-decoration: none;
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.35rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.station-dash-nav button {
+  background: rgba(218, 46, 32, 0.35);
+}
+
+.station-dash-main {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 2rem 1.25rem;
+}
+
+.station-dash-main h2 {
+  margin: 0 0 1rem;
+  font-size: 1.25rem;
+  color: var(--sp-primary);
+}
+
+/* Login onder zender-branding */
+.station-portal-login.station-portal-scope .btn-primary {
+  background: var(--sp-accent);
+  border-color: var(--sp-accent);
+}
+
+.station-portal-login.station-portal-scope .btn-primary:hover {
+  filter: brightness(1.05);
+}
+
+.station-portal-login #login-brand-logo {
+  max-width: 8rem;
+  max-height: 4rem;
+  margin: 0 auto 1rem;
+  display: block;
+  object-fit: contain;
+}
+
+.station-portal-login #login-brand-logo[hidden] {
+  display: none !important;
+}
+
+.station-portal-login .brand-mark.hidden {
+  display: none;
+}

@@ -64,6 +64,12 @@ model Station {
   slug            String          @unique
   status          StationStatus   @default(ACTIVE)
   description     String?
+  /// Publiek zichtbaar logo (URL); subdomein-site en login.
+  publicLogoUrl   String?
+  /// Hex kleur, bv. #1a1a1a — hero/achtergrond accent.
+  primaryColor    String?
+  /// Hex accent, bv. #da2e20 — knoppen/links.
+  accentColor     String?
   currentTrackId  String?
   enabledFeatures Json            @default("[]")
   stationFeatures StationFeature[]

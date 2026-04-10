@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="nl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Zender</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/assets/css/station-portal.css" />
+  </head>
+  <body class="station-public-body station-portal-scope" id="station-public-root">
+    <header class="station-hero" id="sp-hero">
+      <div class="station-hero-inner">
+        <img class="station-hero-logo" id="sp-logo" alt="" hidden />
+        <div class="station-hero-logo-slot" id="sp-logo-slot" aria-hidden="true">●</div>
+        <h1 id="sp-title">…</h1>
+        <p id="sp-desc"></p>
+        <div class="station-public-actions">
+          <a class="station-btn station-btn--ghost" href="/login">Inloggen voor medewerkers</a>
+        </div>
+      </div>
+    </header>
+    <main class="station-sections">
+      <section class="station-card">
+        <h2>Nu op de radio</h2>
+        <p class="placeholder-line">Hier komt straks het huidige nummer en de studio live.</p>
+        <div class="station-placeholder-grid" aria-hidden="true">
+          <div class="station-ph"></div>
+          <div class="station-ph"></div>
+        </div>
+      </section>
+      <section class="station-card">
+        <h2>Luisteren</h2>
+        <p class="placeholder-line">Stream- of app-links worden hier geplaatst.</p>
+        <div class="station-placeholder-grid">
+          <div class="station-ph"></div>
+        </div>
+      </section>
+      <section class="station-card">
+        <h2>DJ’s &amp; nieuws</h2>
+        <p class="placeholder-line">Aankondigingen, programmering en nieuws volgen hier.</p>
+        <div class="station-placeholder-grid">
+          <div class="station-ph"></div>
+          <div class="station-ph"></div>
+          <div class="station-ph"></div>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="/assets/js/station-public-page.js"></script>
+  </body>
+</html>

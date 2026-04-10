@@ -5,8 +5,10 @@ import { prisma } from "../db.js";
 import { signToken } from "../authTokens.js";
 import { asyncHandler } from "../asyncHandler.js";
 import { requireAuth } from "../middleware/requireAuth.js";
-import { Role } from "../constants/roles.js";
+import { Role, isSuperAdmin } from "../constants/roles.js";
 import { normalizePermissions } from "../lib/permissions.js";
+import { resolveTenantSlugFromRequest } from "../lib/tenantHost.js";
+import { findActiveStationByPublicSlug } from "../lib/publicStation.js";
 
 export const authRouter = Router();
 
@@ -178,12 +180,32 @@ authRouter.post(
       return res.status(400).json({ error: "Vul email en password in." });
     }
 
+    const tenantSlug = resolveTenantSlugFromRequest(req);
+    let tenantStation = null;
+    if (tenantSlug) {
+      tenantStation = await findActiveStationByPublicSlug(tenantSlug);
+      if (!tenantStation) {
+        return res.status(404).json({
+          error: "Deze zender bestaat niet of is niet actief. Controleer het webadres.",
+        });
+      }
+    }
+
     const user = await prisma.user.findUnique({
       where: { email },
       include: { station: true },
     });
     if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
       return res.status(401).json({ error: "Verkeerd e-mailadres of wachtwoord." });
+    }
+
+    if (tenantStation && !isSuperAdmin(user)) {
+      if (user.stationId !== tenantStation.id) {
+        return res.status(403).json({
+          error:
+            "Je account hoort niet bij deze zender. Log in via het centrale portaal of vraag een beheerder om toegang tot deze zender.",
+        });
+      }
     }
 
     const token = signToken(user.id);

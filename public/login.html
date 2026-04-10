@@ -11,13 +11,17 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/assets/css/portal.css" />
+    <link rel="stylesheet" href="/assets/css/station-portal.css" />
   </head>
   <body>
-    <div class="login-page">
+    <div class="login-page station-portal-login" id="login-shell">
       <div class="login-card">
-        <div class="brand-mark" aria-hidden="true">S</div>
-        <h1>SonicWave</h1>
-        <p class="login-subtitle">Radio management platform</p>
+        <img id="login-brand-logo" alt="" hidden />
+        <div class="brand-mark" id="login-brand-letter" aria-hidden="true">S</div>
+        <h1 id="login-title">SonicWave</h1>
+        <p class="login-subtitle" id="login-subtitle">Radio management platform</p>
+
+        <div id="login-tenant-error" class="alert alert-error" hidden role="alert"></div>
 
         <form id="login-form" novalidate>
           <div class="form-group">
@@ -46,12 +50,14 @@
           <div id="login-error" class="alert alert-error" hidden role="alert"></div>
           <button type="submit" class="btn btn-primary" id="login-submit">Inloggen →</button>
         </form>
-        <p style="margin-top: 1.25rem; font-size: 0.9rem; text-align: center">
+        <p id="login-register-wrap" style="margin-top: 1.25rem; font-size: 0.9rem; text-align: center">
           Uitnodiging ontvangen?
-          <a href="/register" style="color: var(--color-accent-hover); font-weight: 600">Account aanmaken</a>
+          <a id="login-register-link" href="/register" style="color: var(--color-accent-hover); font-weight: 600"
+            >Account aanmaken</a
+          >
         </p>
       </div>
-      <p class="login-footer">Interne toegang — SonicWave</p>
+      <p class="login-footer" id="login-footer-text">Interne toegang — SonicWave</p>
     </div>
     <script type="module" src="/assets/js/login.js"></script>
   </body>
