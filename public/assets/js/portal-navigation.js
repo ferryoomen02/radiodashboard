@@ -1,9 +1,10 @@
 /**
- * MPA-navigatie: geen SPA, wel vloeiendere ervaring.
- * - Prefetch van portaalpagina’s bij eerste hover op sidebar-links (minder wachttijd bij klik).
- * - Subtiele “leaving”-state vóór unload (alleen zichtbaar als de browser nog een frame tekent).
- * Volledige pagina’s laden nog steeds; dat is bewust (server-HTML + per-pagina scripts).
+ * Portaalnavigatie:
+ * - App-shell: zelfde document; alleen .main-wrap wisselt (portal-app-shell.js). Sidebar + sessie blijven gemount.
+ * - Prefetch op hover; “leaving”-class alleen bij echte volledige paginanavigatie.
  */
+
+import { initPortalAppShell, tryConsumeShellNavigationClick } from "./portal-app-shell.js";
 
 const prefetchedUrls = new Set();
 
@@ -48,6 +49,8 @@ function bindSidebarLinkPrefetch(root) {
 }
 
 function onReady() {
+  initPortalAppShell();
+
   const sidebarRoot = document.getElementById("sidebar-root");
   if (sidebarRoot) {
     bindSidebarLinkPrefetch(sidebarRoot);
@@ -58,14 +61,21 @@ function onReady() {
   document.addEventListener(
     "click",
     (e) => {
-      const a = e.target.closest("a.nav-item");
-      if (a && sidebarRoot && sidebarRoot.contains(a)) {
-        const href = a.getAttribute("href");
+      const anchor = e.target.closest("a");
+      if (!anchor) return;
+
+      if (tryConsumeShellNavigationClick(e, anchor)) {
+        return;
+      }
+
+      const navA = anchor.classList.contains("nav-item") ? anchor : null;
+      if (navA && sidebarRoot && sidebarRoot.contains(navA)) {
+        const href = navA.getAttribute("href");
         if (href && !href.startsWith("#")) {
           try {
             const u = new URL(href, window.location.origin);
             if (u.origin === window.location.origin && window.swApplySidebarClickActive) {
-              window.swApplySidebarClickActive(a);
+              window.swApplySidebarClickActive(navA);
             }
           } catch {
             /* ignore */
@@ -73,8 +83,7 @@ function onReady() {
         }
       }
 
-      const link = e.target.closest("a");
-      if (!isSameOriginPortalLink(link)) return;
+      if (!isSameOriginPortalLink(anchor)) return;
       document.documentElement.classList.add("portal-nav-is-leaving");
     },
     true

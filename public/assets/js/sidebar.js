@@ -290,6 +290,13 @@ async function mountSidebarBody(root) {
   swPerf.sidebarHydrationsCompleted += 1;
   swPerfLog("sidebar klaar", timing);
 
+  if (SONICWAVE_DEBUG && typeof window !== "undefined" && window.__swPortalShellActive) {
+    swLog(
+      "sidebar",
+      "app-shell actief — volgende portaalnavigatie wisselt alleen hoofdcontent; sidebar wordt niet opnieuw gemount."
+    );
+  }
+
   if (SONICWAVE_DEBUG) {
     const dbg = document.createElement("div");
     dbg.className = "sidebar-auth-debug";

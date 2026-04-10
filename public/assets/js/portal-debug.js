@@ -15,6 +15,9 @@ export const swPerf = {
   ensurePageSessionPromiseReuses: 0,
   brandingNetworkRequests: 0,
   sidebarDomRenderPasses: 0,
+  /** Client-shell: aantal keren alleen main-wrap is gewisseld (sidebar bleef gemount). */
+  shellNavigations: 0,
+  shellLastFetchMs: 0,
 };
 
 export function swPerfLog(phase, extra) {

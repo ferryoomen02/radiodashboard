@@ -36,7 +36,9 @@ export async function ensurePageSession() {
   swPerf.ensurePageSessionInvocations += 1;
   if (pageSessionPromise) {
     swPerf.ensurePageSessionPromiseReuses += 1;
-    logSession("ensurePageSession → hergebruik bestaande promise");
+    logSession("ensurePageSession → hergebruik bestaande promise", {
+      shell: typeof window !== "undefined" && !!window.__swPortalShellActive,
+    });
     return pageSessionPromise;
   }
   if (typeof window !== "undefined" && !window.__swSessionStarts) {
