@@ -6,6 +6,9 @@
 
 const MENU_SNAPSHOT_KEY = "sw_sidebar_menu_v1";
 
+/** Volledige sidebar-HTML voor synchroon herstel bij MPA-navigatie (sessionStorage). */
+export const SIDEBAR_HTML_STORAGE_KEY = "sw_sidebar_html_v1";
+
 function snapshotFingerprint(getAuth) {
   const a = getAuth();
   if (!a?.token) return null;
@@ -76,5 +79,33 @@ export function clearMenuSnapshot() {
     sessionStorage.removeItem(MENU_SNAPSHOT_KEY);
   } catch {
     /* ignore */
+  }
+}
+
+export function clearPersistedSidebarHtml() {
+  try {
+    sessionStorage.removeItem(SIDEBAR_HTML_STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Menu-snapshot + opgeslagen sidebar-HTML (bij logout / invalidate / zenderwissel). */
+export function clearSidebarSessionCaches() {
+  clearMenuSnapshot();
+  clearPersistedSidebarHtml();
+}
+
+/**
+ * Bewaar laatste sidebar-markup zodat de volgende pagina die synchroon kan tonen vóór module-load.
+ * @param {string} innerHtml — zonder debug-blokken
+ */
+export function persistSidebarHtml(innerHtml) {
+  try {
+    if (innerHtml && innerHtml.length > 80) {
+      sessionStorage.setItem(SIDEBAR_HTML_STORAGE_KEY, innerHtml);
+    }
+  } catch {
+    /* ignore quota */
   }
 }

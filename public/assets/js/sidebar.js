@@ -2,7 +2,7 @@ import { getAuth, clearAuth, canAccessStations, canAccessUsers, roleLabelNl } fr
 import { SUPER_NAV_FALLBACK_KEYS } from "./portal-features.js";
 import { ensurePageSession } from "./portal-session.js";
 import { fetchPlatformBranding } from "./portal-branding.js";
-import { writeMenuSnapshot, clearMenuSnapshot } from "./sidebar-menu-cache.js";
+import { writeMenuSnapshot, clearSidebarSessionCaches, persistSidebarHtml } from "./sidebar-menu-cache.js";
 import { SONICWAVE_DEBUG, swPerf, swPerfLog, swLog, swLogRedirect } from "./portal-debug.js";
 
 function escapeHtml(s) {
@@ -154,7 +154,7 @@ function buildCompleteSidebarHtml(session, branding, currentPage) {
 function wireSidebarLogout(root) {
   root.querySelector("#sidebar-logout")?.addEventListener("click", () => {
     clearAuth();
-    clearMenuSnapshot();
+    clearSidebarSessionCaches();
     sessionStorage.removeItem("portalDisplayName");
     sessionStorage.removeItem("sonicwaveActiveStationId");
     swLogRedirect("/login", "uitloggen knop");
@@ -219,6 +219,14 @@ async function mountSidebarBody(root) {
     return;
   }
 
+  if (root.querySelector("[data-sidebar-rail]")) {
+    root.classList.add("sidebar--ready");
+    const rail = root.querySelector("[data-sidebar-rail]");
+    if (rail && !rail.classList.contains("sidebar-rail--visible")) {
+      rail.classList.add("sidebar-rail--visible");
+    }
+  }
+
   const tNet0 = now();
   let session;
   let branding;
@@ -248,8 +256,15 @@ async function mountSidebarBody(root) {
   root.innerHTML = html;
   root.classList.add("sidebar--ready");
   root.dataset.sidebarMounted = "1";
+  delete root.dataset.sidebarRestored;
   wireSidebarLogout(root);
   scheduleSidebarFadeIn(root);
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      persistSidebarHtml(root.innerHTML);
+    });
+  });
 
   writeMenuSnapshot(getAuth, session, branding);
 
