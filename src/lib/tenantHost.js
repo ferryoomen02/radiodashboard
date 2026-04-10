@@ -1,15 +1,6 @@
 /**
- * Bepaalt het station-subdomein (slug) uit Host, voor multi-tenant portal + publieke site.
- *
- * Productie: zet PUBLIC_BASE_DOMAIN=bijv. sonicwave.nl
- *   → easyfm.sonicwave.nl → slug "easyfm"
- *   → dashboard.sonicwave.nl of www → geen tenant (centraal)
- *
- * Lokaal zonder PUBLIC_BASE_DOMAIN:
- *   → easyfm.localhost → slug "easyfm"
- *   → localhost → centraal
- *
- * Later: custom domeinen per zender kunnen via aparte DB-kolom op Station worden gekoppeld.
+ * Subdomein → slug (PUBLIC_BASE_DOMAIN of *.localhost).
+ * Eigen hostnaam (Station.customPublicHost) wordt in attachTenantContext via DB opgelost vóór deze stap.
  */
 
 const RESERVED_SUBDOMAINS = new Set([
@@ -41,17 +32,22 @@ export function parseHost(hostHeader) {
   return { hostname: lower.slice(0, colon), port: lower.slice(colon + 1) };
 }
 
-/**
- * @param {import("express").Request} req
- * @returns {string | null} station-slug of null = centrale omgeving
- */
-export function resolveTenantSlugFromRequest(req) {
-  const devOverride =
+function devTenantOverride(req) {
+  const raw =
     typeof req.query?.__tenant === "string" ? req.query.__tenant.trim().toLowerCase() : "";
-  if (devOverride && process.env.NODE_ENV !== "production") {
-    const safe = devOverride.replace(/[^a-z0-9-]/g, "");
-    return safe || null;
-  }
+  if (!raw || process.env.NODE_ENV === "production") return null;
+  const safe = raw.replace(/[^a-z0-9-]/g, "");
+  return safe || null;
+}
+
+/**
+ * Alleen subdomein-logica (geen custom host uit DB).
+ * @param {import("express").Request} req
+ * @returns {string | null} station-slug of null = geen tenant via subdomein
+ */
+export function resolveSubdomainTenantSlug(req) {
+  const dev = devTenantOverride(req);
+  if (dev) return dev;
 
   const host = req.get("host") || "";
   const { hostname } = parseHost(host);

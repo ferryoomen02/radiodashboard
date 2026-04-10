@@ -7,7 +7,6 @@ import { asyncHandler } from "../asyncHandler.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { Role, isSuperAdmin } from "../constants/roles.js";
 import { normalizePermissions } from "../lib/permissions.js";
-import { resolveTenantSlugFromRequest } from "../lib/tenantHost.js";
 import { findActiveStationByPublicSlug } from "../lib/publicStation.js";
 
 export const authRouter = Router();
@@ -180,7 +179,7 @@ authRouter.post(
       return res.status(400).json({ error: "Vul email en password in." });
     }
 
-    const tenantSlug = resolveTenantSlugFromRequest(req);
+    const tenantSlug = req.tenantSlug;
     let tenantStation = null;
     if (tenantSlug) {
       tenantStation = await findActiveStationByPublicSlug(tenantSlug);

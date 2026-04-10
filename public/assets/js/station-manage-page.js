@@ -22,6 +22,7 @@ const nameInp = document.getElementById("st-name");
 const slugDisplay = document.getElementById("st-slug-display");
 const statusSel = document.getElementById("st-status");
 const descInp = document.getElementById("st-desc");
+const customHostInp = document.getElementById("st-custom-host");
 const featuresRoot = document.getElementById("st-features");
 const btnFeat = document.getElementById("st-save-features");
 
@@ -62,9 +63,15 @@ function renderFeatures() {
     .join("");
 }
 
-async function loadCompanies(selectedId) {
+async function loadCompanies(selectedId, st) {
   const res = await apiFetch("/api/companies");
-  if (!res.ok) return;
+  if (!res.ok) {
+    const label = st?.company?.name || "—";
+    companySel.innerHTML = `<option value="${escapeHtml(selectedId)}">${escapeHtml(label)}</option>`;
+    companySel.disabled = true;
+    return;
+  }
+  companySel.disabled = false;
   const data = await res.json();
   const list = data.companies || [];
   companySel.innerHTML = list
@@ -93,7 +100,8 @@ async function loadAll() {
   }
   statusSel.value = st.status || "ACTIVE";
   descInp.value = st.description || "";
-  await loadCompanies(st.companyId);
+  if (customHostInp) customHostInp.value = st.customPublicHost || "";
+  await loadCompanies(st.companyId, st);
 
   const fr = await apiFetch(`/api/stations/${encodeURIComponent(sid)}/features`);
   if (handleAuthFailure(fr)) return;
@@ -115,6 +123,7 @@ form.addEventListener("submit", async (e) => {
     companyId: companySel.value,
     status: statusSel.value,
     description: descInp.value.trim() || null,
+    customPublicHost: customHostInp?.value?.trim() ? customHostInp.value.trim() : null,
   };
   const res = await apiFetch(`/api/stations/${encodeURIComponent(sid)}`, {
     method: "PATCH",
@@ -169,7 +178,10 @@ btnFeat.addEventListener("click", async () => {
     window.location.href = "/login";
     return;
   }
-  if (!isSuperAdminRole(auth.user?.role)) {
+  const canEdit =
+    isSuperAdminRole(auth.user?.role) ||
+    (auth.user?.role === "STATION_ADMIN" && auth.user?.station?.id === sid);
+  if (!canEdit) {
     window.location.href = "/dashboard";
     return;
   }

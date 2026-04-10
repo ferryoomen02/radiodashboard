@@ -70,6 +70,8 @@ model Station {
   primaryColor    String?
   /// Hex accent, bv. #da2e20 — knoppen/links.
   accentColor     String?
+  /// Optioneel eigen hostnaam voor deze zender (bv. www.easyfm.nl). DNS + HTTPS bij hosting configureren.
+  customPublicHost String? @unique
   currentTrackId  String?
   enabledFeatures Json            @default("[]")
   stationFeatures StationFeature[]

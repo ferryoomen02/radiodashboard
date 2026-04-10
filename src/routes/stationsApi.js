@@ -12,6 +12,8 @@ import {
 import { requireUserStationFeature } from "../middleware/requireStationFeature.js";
 import { asyncHandler } from "../asyncHandler.js";
 import { ensureUniqueStationSlug } from "../lib/slug.js";
+import { normalizePublicHostname } from "../lib/publicHostname.js";
+import { Prisma } from "@prisma/client";
 
 export const stationsRouter = Router();
 stationsRouter.use(requireAuth);
@@ -30,6 +32,7 @@ function stationListItem(s) {
     publicLogoUrl: s.publicLogoUrl ?? null,
     primaryColor: s.primaryColor ?? null,
     accentColor: s.accentColor ?? null,
+    customPublicHost: s.customPublicHost ?? null,
     companyId: s.companyId,
     company: s.company
       ? { id: s.company.id, name: s.company.name, slug: s.company.slug }
@@ -298,6 +301,22 @@ stationsRouter.patch(
       }
     }
 
+    if (req.body?.customPublicHost !== undefined) {
+      const raw = req.body.customPublicHost;
+      if (raw === null || raw === "") {
+        data.customPublicHost = null;
+      } else if (typeof raw === "string") {
+        const h = normalizePublicHostname(raw);
+        if (!h) {
+          return res.status(400).json({
+            error:
+              "Ongeldige hostnaam. Gebruik alleen de host, bijv. www.easyfm.nl (zonder https:// of pad).",
+          });
+        }
+        data.customPublicHost = h;
+      }
+    }
+
     if (isSuperAdmin(user)) {
       if (typeof req.body?.companyId === "string") {
         const cid = req.body.companyId.trim();
@@ -332,10 +351,20 @@ stationsRouter.patch(
     }
 
     if (Object.keys(data).length > 0) {
-      await prisma.station.update({
-        where: { id },
-        data,
-      });
+      try {
+        await prisma.station.update({
+          where: { id },
+          data,
+        });
+      } catch (e) {
+        if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+          return res.status(400).json({
+            error:
+              "Deze hostnaam is al gekoppeld aan een andere zender. Kies een andere host of verwijder hem bij de andere zender.",
+          });
+        }
+        throw e;
+      }
     }
 
     const full = await prisma.station.findUnique({

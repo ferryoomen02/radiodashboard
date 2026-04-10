@@ -1,6 +1,5 @@
 import { Router } from "express";
 import { asyncHandler } from "../asyncHandler.js";
-import { resolveTenantSlugFromRequest } from "../lib/tenantHost.js";
 import {
   buildPublicStationPayload,
   findActiveStationByPublicSlug,
@@ -15,7 +14,7 @@ export const publicApiRouter = Router();
 publicApiRouter.get(
   "/public/station",
   asyncHandler(async (req, res) => {
-    const slug = resolveTenantSlugFromRequest(req);
+    const slug = req.tenantSlug;
     if (!slug) {
       return res.json({
         mode: "central",

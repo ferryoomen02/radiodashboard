@@ -13,7 +13,7 @@ import { invitesRouter } from "./routes/invitesApi.js";
 import { mediaRouter } from "./routes/mediaApi.js";
 import { companiesRouter } from "./routes/companiesApi.js";
 import { publicApiRouter } from "./routes/publicApi.js";
-import { attachTenantSlug } from "./middleware/attachTenantSlug.js";
+import { attachTenantContext } from "./middleware/attachTenantContext.js";
 import { asyncHandler } from "./asyncHandler.js";
 import { findActiveStationByPublicSlug } from "./lib/publicStation.js";
 
@@ -26,7 +26,7 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
-app.use(attachTenantSlug);
+app.use(attachTenantContext);
 
 app.use(
   "/assets",

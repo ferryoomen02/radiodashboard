@@ -50,6 +50,22 @@
                 <label class="form-label" for="st-desc">Omschrijving</label>
                 <input class="input-field" id="st-desc" />
               </div>
+              <div class="form-group">
+                <label class="form-label" for="st-custom-host">Eigen publieke domein (optioneel)</label>
+                <input
+                  class="input-field"
+                  id="st-custom-host"
+                  type="text"
+                  placeholder="bijv. www.easyfm.nl"
+                  autocomplete="off"
+                  spellcheck="false"
+                />
+                <p class="empty-state" style="margin: 0.35rem 0 0; font-size: 0.8125rem; line-height: 1.45">
+                  Alleen de hostnaam, zonder <code>https://</code>. Zet in DNS een A- of CNAME-record naar je server en voeg het domein toe bij je hosting (bv. Railway custom domain) zodat er een
+                  TLS-certificaat wordt uitgegeven. Toont de browser <strong>Verbinding is niet privé</strong>, dan is HTTPS voor dit domein nog niet actief — dat los je in het hostingpaneel op, niet
+                  hier.
+                </p>
+              </div>
               <button type="submit" class="btn btn-primary" style="width: auto">Opslaan</button>
               <div id="st-msg" class="alert" style="margin-top: 1rem" hidden role="status"></div>
             </form>
