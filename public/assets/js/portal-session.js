@@ -1,6 +1,7 @@
 import { getAuth } from "./portal-auth.js";
 import { refreshAuthProfile } from "./auth-refresh.js";
 import { fetchActiveFeatures, clearActiveFeaturesCache } from "./portal-features.js";
+import { clearMenuSnapshot } from "./sidebar-menu-cache.js";
 import { SONICWAVE_DEBUG, swPerf } from "./portal-debug.js";
 
 /** Eén gedeelde auth + features-load per volledige pageload (sidebar + pagina-scripts delen dezelfde Promise). */
@@ -24,6 +25,7 @@ export function invalidatePageSession(reason) {
   pageSessionPromise = null;
   lastSession = null;
   clearActiveFeaturesCache();
+  clearMenuSnapshot();
 }
 
 /**

@@ -14,6 +14,7 @@ export const swPerf = {
   ensurePageSessionNewChains: 0,
   ensurePageSessionPromiseReuses: 0,
   brandingNetworkRequests: 0,
+  sidebarDomRenderPasses: 0,
 };
 
 export function swPerfLog(phase, extra) {

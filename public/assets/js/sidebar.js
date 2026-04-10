@@ -2,6 +2,7 @@ import { getAuth, clearAuth, canAccessStations, canAccessUsers, roleLabelNl } fr
 import { SUPER_NAV_FALLBACK_KEYS } from "./portal-features.js";
 import { ensurePageSession } from "./portal-session.js";
 import { fetchPlatformBranding } from "./portal-branding.js";
+import { readMenuSnapshot, writeMenuSnapshot, clearMenuSnapshot } from "./sidebar-menu-cache.js";
 import { SONICWAVE_DEBUG, swPerf, swPerfLog, swLog, swLogRedirect } from "./portal-debug.js";
 
 function escapeHtml(s) {
@@ -37,6 +38,9 @@ const iconImage = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" s
 /** Voorkomt dubbele parallelle mount (zeldzaam). */
 let sidebarMountInFlight = null;
 
+/** Telt DOM-updates van het menu (snapshot + reconcile); max. 2 per pageload. */
+let sidebarRenderPasses = 0;
+
 function labelFor(keys, key, fallback) {
   return keys.labelByKey[key] || fallback;
 }
@@ -44,7 +48,7 @@ function labelFor(keys, key, fallback) {
 function logoSlotHtml(branding) {
   const initial = escapeHtml((branding.platformName || "S").slice(0, 1).toUpperCase());
   if (branding.logoUrl) {
-    return `<div class="sidebar-logo-wrap"><img src="${escapeHtml(branding.logoUrl)}" alt="" class="sidebar-logo-img" loading="lazy" decoding="async" /></div>`;
+    return `<div class="sidebar-logo-wrap"><img src="${escapeHtml(branding.logoUrl)}" alt="" class="sidebar-logo-img" loading="eager" fetchpriority="high" decoding="async" /></div>`;
   }
   return `<div class="sidebar-brand-fallback" aria-hidden="true"><span class="sidebar-brand-fallback-letter">${initial}</span></div>`;
 }
@@ -100,7 +104,15 @@ function buildNavInnerHtml(feats, role, enabled, current) {
   return nav;
 }
 
-/** Direct zichtbare shell (localStorage) — geen wachten op netwerk. Vaste hoogtes = min. layout-shift. */
+function mergeEnabledKeys(feats, role) {
+  let enabled = feats?.enabledKeys ? new Set(feats.enabledKeys) : new Set();
+  if (role === "SUPER_ADMIN") {
+    SUPER_NAV_FALLBACK_KEYS.forEach((k) => enabled.add(k));
+  }
+  return enabled;
+}
+
+/** Direct zichtbare shell (localStorage) — vaste hoogtes = min. layout-shift. */
 function sidebarImmediateShellHtml() {
   const auth = getAuth();
   const role = auth?.user?.role ?? "";
@@ -138,6 +150,7 @@ function sidebarImmediateShellHtml() {
 function wireSidebarLogout(root) {
   root.querySelector("#sidebar-logout")?.addEventListener("click", () => {
     clearAuth();
+    clearMenuSnapshot();
     sessionStorage.removeItem("portalDisplayName");
     sessionStorage.removeItem("sonicwaveActiveStationId");
     swLogRedirect("/login", "uitloggen knop");
@@ -145,7 +158,14 @@ function wireSidebarLogout(root) {
   });
 }
 
-function hydrateSidebarDom(root, branding, stationLine, role, navHtml) {
+/**
+ * Vult merk + menu. Optioneel logo overslaan als URL ongewijzigd (voorkomt img reload / flikkeren).
+ */
+function hydrateSidebarDom(root, branding, stationLine, role, navHtml, options = {}) {
+  const { skipLogoIfUrl } = options;
+  sidebarRenderPasses += 1;
+  swPerf.sidebarDomRenderPasses = (swPerf.sidebarDomRenderPasses || 0) + 1;
+
   const titleEl = root.querySelector("#sidebar-brand-title");
   const subEl = root.querySelector("#sidebar-brand-sub");
   const ctxEl = root.querySelector("#sidebar-context-line");
@@ -157,7 +177,15 @@ function hydrateSidebarDom(root, branding, stationLine, role, navHtml) {
   if (subEl) subEl.textContent = branding.subtitle || "Platform";
   if (ctxEl) ctxEl.textContent = stationLine;
   if (labelEl) labelEl.textContent = `Menu · ${roleLabelNl(role)}`;
-  if (slot) slot.innerHTML = logoSlotHtml(branding);
+
+  const nextLogoUrl = branding.logoUrl || null;
+  if (slot) {
+    const sameLogo = skipLogoIfUrl != null && skipLogoIfUrl === nextLogoUrl;
+    if (!sameLogo) {
+      slot.innerHTML = logoSlotHtml(branding);
+    }
+  }
+
   if (items) {
     items.classList.remove("sidebar-nav-items--pending");
     items.innerHTML = navHtml;
@@ -191,12 +219,17 @@ export async function mountSidebar() {
 }
 
 async function mountSidebarBody(root) {
+  const now = typeof performance !== "undefined" ? () => performance.now() : () => 0;
+  const tStart = now();
+  sidebarRenderPasses = 0;
+
   swPerf.sidebarMountBodiesStarted += 1;
   if (typeof window !== "undefined") {
     window.__swSidebarMounts = (window.__swSidebarMounts || 0) + 1;
+    window.__swSidebarInitCount = window.__swSidebarMounts;
     if (SONICWAVE_DEBUG) {
       console.debug("[SonicWave sidebar] mountSidebarBody start", {
-        count: window.__swSidebarMounts,
+        mountBodyIndex: window.__swSidebarMounts,
         perf: swPerf.sidebarMountBodiesStarted,
       });
     }
@@ -209,10 +242,40 @@ async function mountSidebarBody(root) {
     return;
   }
 
+  const tShell0 = now();
   root.innerHTML = sidebarImmediateShellHtml();
   root.classList.add("sidebar--ready", "sidebar--nav-pending");
   wireSidebarLogout(root);
+  const shellMs = Math.round(now() - tShell0);
 
+  const snap = readMenuSnapshot(getAuth);
+  let lastNavHtml = "";
+  let lastLogoUrl = null;
+  let snapshotHydrateMs = 0;
+
+  if (snap) {
+    const tSnap0 = now();
+    const feats = { enabledKeys: new Set(snap.enabledKeys), labelByKey: snap.labelByKey || {} };
+    const enabled = mergeEnabledKeys(feats, snap.role);
+    const current = document.body.dataset.page || "";
+    lastNavHtml = buildNavInnerHtml(feats, snap.role, enabled, current);
+    const branding = {
+      platformName: snap.branding?.platformName || "SonicWave",
+      subtitle: snap.branding?.subtitle ?? "Platform",
+      logoUrl: snap.branding?.logoUrl ?? null,
+    };
+    lastLogoUrl = branding.logoUrl ?? null;
+    hydrateSidebarDom(root, branding, snap.stationLine, snap.role, lastNavHtml, { skipLogoIfUrl: null });
+    root.classList.remove("sidebar--nav-pending");
+    snapshotHydrateMs = Math.round(now() - tSnap0);
+    if (SONICWAVE_DEBUG) {
+      console.info("[SonicWave sidebar] menu uit snapshot-cache (geen wachten op netwerk voor eerste paint)", {
+        keys: snap.enabledKeys?.length,
+      });
+    }
+  }
+
+  const tNet0 = now();
   let session;
   let branding;
   try {
@@ -228,6 +291,7 @@ async function mountSidebarBody(root) {
     swPerfLog("sidebar fout", { error: String(err?.message || err) });
     return;
   }
+  const networkMs = Math.round(now() - tNet0);
 
   const auth = session?.auth || getAuth();
   if (!auth?.token) {
@@ -241,31 +305,57 @@ async function mountSidebarBody(root) {
     role === "SUPER_ADMIN" ? "Alle zenders" : auth.station?.name || "Geen zender";
 
   const feats = session.features;
-  let enabled = feats?.enabledKeys ?? new Set();
+  const enabled = mergeEnabledKeys(feats, role);
   const current = document.body.dataset.page || "";
-
-  if (role === "SUPER_ADMIN") {
-    SUPER_NAV_FALLBACK_KEYS.forEach((k) => enabled.add(k));
-  }
-
   const navHtml = buildNavInnerHtml(feats, role, enabled, current);
 
-  swLog("sidebar", "mount OK", {
-    page: current,
-    role: auth.user?.role,
-    superAdmin: role === "SUPER_ADMIN",
-    navKeyCount: enabled.size,
-  });
-  if (SONICWAVE_DEBUG) {
-    console.debug("[SonicWave sidebar] één render", { role, email: auth.user?.email, navKeyCount: enabled.size });
-  }
+  const tRecon0 = now();
+  const navUnchanged = navHtml === lastNavHtml;
+  const logoUrl = branding.logoUrl || null;
+  const logoUnchanged = lastLogoUrl != null && lastLogoUrl === logoUrl;
 
-  hydrateSidebarDom(root, branding, stationLine, role, navHtml);
+  if (snap && navUnchanged && logoUnchanged) {
+    const titleEl = root.querySelector("#sidebar-brand-title");
+    const subEl = root.querySelector("#sidebar-brand-sub");
+    const ctxEl = root.querySelector("#sidebar-context-line");
+    const labelEl = root.querySelector("#sidebar-nav-label");
+    if (titleEl) titleEl.textContent = branding.platformName || "SonicWave";
+    if (subEl) subEl.textContent = branding.subtitle || "Platform";
+    if (ctxEl) ctxEl.textContent = stationLine;
+    if (labelEl) labelEl.textContent = `Menu · ${roleLabelNl(role)}`;
+  } else {
+    hydrateSidebarDom(root, branding, stationLine, role, navHtml, {
+      skipLogoIfUrl: logoUnchanged ? logoUrl : null,
+    });
+  }
   root.classList.remove("sidebar--nav-pending");
+  const reconcileMs = Math.round(now() - tRecon0);
+
+  writeMenuSnapshot(getAuth, session, branding);
+
   root.dataset.sidebarMounted = "1";
 
+  const totalMs = Math.round(now() - tStart);
+  const timing = {
+    shellMs,
+    snapshotHydrateMs,
+    networkMs,
+    reconcileMs,
+    totalMs,
+    sidebarInitRuns: typeof window !== "undefined" ? window.__swSidebarMounts : 1,
+    sidebarRenderPasses: sidebarRenderPasses,
+    usedSnapshot: Boolean(snap),
+    navSkipped: Boolean(snap && navUnchanged && logoUnchanged),
+  };
+  if (typeof window !== "undefined") {
+    window.__swSidebarTiming = timing;
+  }
+  if (SONICWAVE_DEBUG) {
+    console.info("[SonicWave sidebar] timing (menu-opbouw)", timing);
+  }
+
   swPerf.sidebarHydrationsCompleted += 1;
-  swPerfLog("sidebar klaar", { page: current });
+  swPerfLog("sidebar klaar", timing);
 
   if (SONICWAVE_DEBUG) {
     const dbg = document.createElement("div");
@@ -283,7 +373,7 @@ async function init() {
 
 if (typeof window !== "undefined" && SONICWAVE_DEBUG) {
   window.__swSidebarModuleInits = (window.__swSidebarModuleInits || 0) + 1;
-  console.debug("[SonicWave sidebar] module geladen", { count: window.__swSidebarModuleInits });
+  console.debug("[SonicWave sidebar] module geladen", { moduleInits: window.__swSidebarModuleInits });
 }
 
 if (document.readyState === "loading") {
