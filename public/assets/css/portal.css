@@ -219,96 +219,29 @@ body {
   padding: 1.35rem 0 1rem;
   min-height: 100vh;
   border-right: 1px solid rgba(0, 0, 0, 0.06);
+  box-sizing: border-box;
 }
 
-/* Tot JS klaar is: vaste breedte, geen lege inklap; subtiele placeholder (geen layout-shift) */
-.sidebar:not(.sidebar--ready) {
-  position: relative;
-}
-.sidebar:not(.sidebar--ready)::after {
-  content: "";
-  display: block;
-  margin: 0.75rem 1.25rem 0;
-  height: 11.5rem;
-  border-radius: 10px;
-  background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0.035) 0%,
-    rgba(255, 255, 255, 0.065) 50%,
-    rgba(255, 255, 255, 0.035) 100%
-  );
-  background-size: 200% 100%;
-  animation: sw-sidebar-skeleton 1.2s ease-in-out infinite;
-  pointer-events: none;
-}
-@keyframes sw-sidebar-skeleton {
-  0% {
-    background-position: 100% 0;
-  }
-  100% {
-    background-position: -100% 0;
-  }
+/* Voor JS: lege rail = rustige vaste kolom (geen shimmer, geen layout-shift) */
+#sidebar-root.sidebar:empty {
+  min-height: 100vh;
+  background: var(--color-sidebar);
 }
 
-.sidebar--loading .nav-section {
-  opacity: 0.65;
-}
-
-/* Sidebar: directe shell + menu-laden (geen lege rail tot API klaar is) */
-.sidebar--nav-pending .sidebar-nav-section {
-  opacity: 0.92;
-}
-
-.sidebar-inline-skeleton--logo {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0.06) 0%,
-    rgba(255, 255, 255, 0.11) 50%,
-    rgba(255, 255, 255, 0.06) 100%
-  );
-  background-size: 200% 100%;
-  animation: sw-sidebar-skeleton 1.2s ease-in-out infinite;
-}
-
-.sidebar-nav-skel {
+/* Eén contentkolom: subtiele fade-in na eerste render (geen skeleton → menu switch) */
+.sidebar-rail {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.15rem 0 0.35rem;
+  flex: 1;
+  min-height: 0;
+  opacity: 0;
+  transition: opacity 0.22s ease-out;
 }
-.sidebar-nav-skel span {
-  display: block;
-  height: 0.65rem;
-  border-radius: 6px;
-  background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0.05) 0%,
-    rgba(255, 255, 255, 0.09) 50%,
-    rgba(255, 255, 255, 0.05) 100%
-  );
-  background-size: 200% 100%;
-  animation: sw-sidebar-skeleton 1.2s ease-in-out infinite;
+.sidebar-rail--visible {
+  opacity: 1;
 }
-.sidebar-nav-skel span:nth-child(1) {
-  width: 72%;
-}
-.sidebar-nav-skel span:nth-child(2) {
-  width: 88%;
-}
-.sidebar-nav-skel span:nth-child(3) {
-  width: 64%;
-}
-.sidebar-nav-skel span:nth-child(4) {
-  width: 80%;
-}
-.sidebar-nav-skel span:nth-child(5) {
-  width: 70%;
-}
-.sidebar-nav-skel span:nth-child(6) {
-  width: 55%;
+.sidebar-rail--error {
+  opacity: 1;
 }
 
 .sidebar-nav-error {

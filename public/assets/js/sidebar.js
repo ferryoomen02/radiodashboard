@@ -2,7 +2,7 @@ import { getAuth, clearAuth, canAccessStations, canAccessUsers, roleLabelNl } fr
 import { SUPER_NAV_FALLBACK_KEYS } from "./portal-features.js";
 import { ensurePageSession } from "./portal-session.js";
 import { fetchPlatformBranding } from "./portal-branding.js";
-import { readMenuSnapshot, writeMenuSnapshot, clearMenuSnapshot } from "./sidebar-menu-cache.js";
+import { writeMenuSnapshot, clearMenuSnapshot } from "./sidebar-menu-cache.js";
 import { SONICWAVE_DEBUG, swPerf, swPerfLog, swLog, swLogRedirect } from "./portal-debug.js";
 
 function escapeHtml(s) {
@@ -35,11 +35,7 @@ const iconFile = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" st
 const iconSettings = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
 const iconImage = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>`;
 
-/** Voorkomt dubbele parallelle mount (zeldzaam). */
 let sidebarMountInFlight = null;
-
-/** Telt DOM-updates van het menu (snapshot + reconcile); max. 2 per pageload. */
-let sidebarRenderPasses = 0;
 
 function labelFor(keys, key, fallback) {
   return keys.labelByKey[key] || fallback;
@@ -112,37 +108,45 @@ function mergeEnabledKeys(feats, role) {
   return enabled;
 }
 
-/** Direct zichtbare shell (localStorage) — vaste hoogtes = min. layout-shift. */
-function sidebarImmediateShellHtml() {
-  const auth = getAuth();
-  const role = auth?.user?.role ?? "";
+/**
+ * Eén HTML-string: zelfde structuur als de uiteindelijke sidebar (geen aparte skeleton-layout).
+ * Vaste blokken voor logo-rail + tekst + nav + footer.
+ */
+function buildCompleteSidebarHtml(session, branding, currentPage) {
+  const auth = session?.auth || getAuth();
+  const role = auth?.user?.role;
   const stationLine =
-    role === "SUPER_ADMIN" ? "Alle zenders" : auth?.station?.name || "…";
-  const roleLbl = role ? roleLabelNl(role) : "Laden…";
+    role === "SUPER_ADMIN" ? "Alle zenders" : auth?.station?.name || "Geen zender";
+  const feats = session?.features || { enabledKeys: new Set(), labelByKey: {} };
+  const enabled = mergeEnabledKeys(feats, role);
+  const navHtml = buildNavInnerHtml(feats, role, enabled, currentPage);
+
+  const platformTitle = escapeHtml(branding.platformName || "SonicWave");
+  const platformSub = escapeHtml(branding.subtitle || "Platform");
+  const stationEsc = escapeHtml(stationLine);
+
   return `
-    <div class="sidebar-brand">
-      <div class="sidebar-brand-inner">
-        <div class="sidebar-logo-slot" id="sw-sidebar-logo-slot">
-          <div class="sidebar-inline-skeleton sidebar-inline-skeleton--logo" aria-hidden="true"></div>
+    <div class="sidebar-rail" data-sidebar-rail>
+      <header class="sidebar-brand" aria-label="Platform">
+        <div class="sidebar-brand-inner">
+          <div class="sidebar-logo-slot" id="sw-sidebar-logo-slot">${logoSlotHtml(branding)}</div>
+          <div class="sidebar-brand-meta">
+            <strong class="sidebar-brand-name" id="sidebar-brand-title">${platformTitle}</strong>
+            <span class="sidebar-brand-subtitle" id="sidebar-brand-sub">${platformSub}</span>
+            <span class="sidebar-brand-station" id="sidebar-context-line">${stationEsc}</span>
+          </div>
         </div>
-        <div class="sidebar-brand-meta">
-          <strong class="sidebar-brand-name" id="sidebar-brand-title">SonicWave</strong>
-          <span class="sidebar-brand-subtitle" id="sidebar-brand-sub">Platform</span>
-          <span class="sidebar-brand-station" id="sidebar-context-line">${escapeHtml(stationLine)}</span>
-        </div>
+      </header>
+      <nav class="nav-section sidebar-nav-section" aria-label="Menu">
+        <div class="nav-label" id="sidebar-nav-label">Menu · ${escapeHtml(roleLabelNl(role))}</div>
+        <div id="sidebar-nav-items" class="sidebar-nav-items">${navHtml}</div>
+      </nav>
+      <div class="sidebar-footer">
+        <button type="button" class="nav-item sidebar-logout" id="sidebar-logout" style="width:100%;border:none;background:transparent;text-align:left;cursor:pointer;font:inherit;">
+          ${iconLogout}
+          Uitloggen
+        </button>
       </div>
-    </div>
-    <nav class="nav-section sidebar-nav-section" aria-label="Menu">
-      <div class="nav-label" id="sidebar-nav-label">Menu · ${escapeHtml(roleLbl)}</div>
-      <div id="sidebar-nav-items" class="sidebar-nav-items sidebar-nav-items--pending">
-        <div class="sidebar-nav-skel" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>
-      </div>
-    </nav>
-    <div class="sidebar-footer">
-      <button type="button" class="nav-item sidebar-logout" id="sidebar-logout" style="width:100%;border:none;background:transparent;text-align:left;cursor:pointer;font:inherit;">
-        ${iconLogout}
-        Uitloggen
-      </button>
     </div>
   `;
 }
@@ -158,38 +162,14 @@ function wireSidebarLogout(root) {
   });
 }
 
-/**
- * Vult merk + menu. Optioneel logo overslaan als URL ongewijzigd (voorkomt img reload / flikkeren).
- */
-function hydrateSidebarDom(root, branding, stationLine, role, navHtml, options = {}) {
-  const { skipLogoIfUrl } = options;
-  sidebarRenderPasses += 1;
-  swPerf.sidebarDomRenderPasses = (swPerf.sidebarDomRenderPasses || 0) + 1;
-
-  const titleEl = root.querySelector("#sidebar-brand-title");
-  const subEl = root.querySelector("#sidebar-brand-sub");
-  const ctxEl = root.querySelector("#sidebar-context-line");
-  const slot = root.querySelector("#sw-sidebar-logo-slot");
-  const items = root.querySelector("#sidebar-nav-items");
-  const labelEl = root.querySelector("#sidebar-nav-label");
-
-  if (titleEl) titleEl.textContent = branding.platformName || "SonicWave";
-  if (subEl) subEl.textContent = branding.subtitle || "Platform";
-  if (ctxEl) ctxEl.textContent = stationLine;
-  if (labelEl) labelEl.textContent = `Menu · ${roleLabelNl(role)}`;
-
-  const nextLogoUrl = branding.logoUrl || null;
-  if (slot) {
-    const sameLogo = skipLogoIfUrl != null && skipLogoIfUrl === nextLogoUrl;
-    if (!sameLogo) {
-      slot.innerHTML = logoSlotHtml(branding);
-    }
-  }
-
-  if (items) {
-    items.classList.remove("sidebar-nav-items--pending");
-    items.innerHTML = navHtml;
-  }
+function scheduleSidebarFadeIn(root) {
+  const rail = root.querySelector("[data-sidebar-rail]");
+  if (!rail) return;
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      rail.classList.add("sidebar-rail--visible");
+    });
+  });
 }
 
 export async function mountSidebar() {
@@ -205,9 +185,6 @@ export async function mountSidebar() {
     return;
   }
   if (sidebarMountInFlight) {
-    if (SONICWAVE_DEBUG) {
-      console.debug("[SonicWave sidebar] mountSidebar: wacht op lopende mount");
-    }
     return sidebarMountInFlight;
   }
   sidebarMountInFlight = mountSidebarBody(root);
@@ -221,16 +198,16 @@ export async function mountSidebar() {
 async function mountSidebarBody(root) {
   const now = typeof performance !== "undefined" ? () => performance.now() : () => 0;
   const tStart = now();
-  sidebarRenderPasses = 0;
 
   swPerf.sidebarMountBodiesStarted += 1;
+  swPerf.sidebarDomRenderPasses = (swPerf.sidebarDomRenderPasses || 0) + 1;
   if (typeof window !== "undefined") {
     window.__swSidebarMounts = (window.__swSidebarMounts || 0) + 1;
     window.__swSidebarInitCount = window.__swSidebarMounts;
+    window.__swSidebarRenderCount = 1;
     if (SONICWAVE_DEBUG) {
-      console.debug("[SonicWave sidebar] mountSidebarBody start", {
-        mountBodyIndex: window.__swSidebarMounts,
-        perf: swPerf.sidebarMountBodiesStarted,
+      console.debug("[SonicWave sidebar] mountSidebarBody (één render na data)", {
+        initIndex: window.__swSidebarMounts,
       });
     }
   }
@@ -242,116 +219,53 @@ async function mountSidebarBody(root) {
     return;
   }
 
-  const tShell0 = now();
-  root.innerHTML = sidebarImmediateShellHtml();
-  root.classList.add("sidebar--ready", "sidebar--nav-pending");
-  wireSidebarLogout(root);
-  const shellMs = Math.round(now() - tShell0);
-
-  const snap = readMenuSnapshot(getAuth);
-  let lastNavHtml = "";
-  let lastLogoUrl = null;
-  let snapshotHydrateMs = 0;
-
-  if (snap) {
-    const tSnap0 = now();
-    const feats = { enabledKeys: new Set(snap.enabledKeys), labelByKey: snap.labelByKey || {} };
-    const enabled = mergeEnabledKeys(feats, snap.role);
-    const current = document.body.dataset.page || "";
-    lastNavHtml = buildNavInnerHtml(feats, snap.role, enabled, current);
-    const branding = {
-      platformName: snap.branding?.platformName || "SonicWave",
-      subtitle: snap.branding?.subtitle ?? "Platform",
-      logoUrl: snap.branding?.logoUrl ?? null,
-    };
-    lastLogoUrl = branding.logoUrl ?? null;
-    hydrateSidebarDom(root, branding, snap.stationLine, snap.role, lastNavHtml, { skipLogoIfUrl: null });
-    root.classList.remove("sidebar--nav-pending");
-    snapshotHydrateMs = Math.round(now() - tSnap0);
-    if (SONICWAVE_DEBUG) {
-      console.info("[SonicWave sidebar] menu uit snapshot-cache (geen wachten op netwerk voor eerste paint)", {
-        keys: snap.enabledKeys?.length,
-      });
-    }
-  }
-
   const tNet0 = now();
   let session;
   let branding;
   try {
     [session, branding] = await Promise.all([ensurePageSession(), fetchPlatformBranding()]);
   } catch (err) {
-    swLog("sidebar", "mountSidebarBody: sessie/branding fout", String(err?.message || err));
-    const items = root.querySelector("#sidebar-nav-items");
-    if (items) {
-      items.classList.remove("sidebar-nav-items--pending");
-      items.innerHTML =
-        '<p class="sidebar-nav-error" role="alert">Menu kon niet laden. Vernieuw de pagina.</p>';
-    }
+    swLog("sidebar", "sessie/branding fout", String(err?.message || err));
+    root.innerHTML = `<div class="sidebar-rail sidebar-rail--visible sidebar-rail--error" data-sidebar-rail>
+      <p class="sidebar-nav-error" role="alert" style="padding:1rem 1.35rem;margin:0">Menu kon niet laden. Vernieuw de pagina.</p>
+    </div>`;
+    root.classList.add("sidebar--ready");
     swPerfLog("sidebar fout", { error: String(err?.message || err) });
     return;
   }
-  const networkMs = Math.round(now() - tNet0);
+  const networkWaitMs = Math.round(now() - tNet0);
 
   const auth = session?.auth || getAuth();
   if (!auth?.token) {
     return;
   }
 
-  swLog("sidebar", "sessie + branding geladen (parallel)", { role: auth.user?.role });
+  const tBuild0 = now();
+  const currentPage = document.body.dataset.page || "";
+  const html = buildCompleteSidebarHtml(session, branding, currentPage);
+  const buildHtmlMs = Math.round(now() - tBuild0);
 
-  const role = auth.user?.role;
-  const stationLine =
-    role === "SUPER_ADMIN" ? "Alle zenders" : auth.station?.name || "Geen zender";
-
-  const feats = session.features;
-  const enabled = mergeEnabledKeys(feats, role);
-  const current = document.body.dataset.page || "";
-  const navHtml = buildNavInnerHtml(feats, role, enabled, current);
-
-  const tRecon0 = now();
-  const navUnchanged = navHtml === lastNavHtml;
-  const logoUrl = branding.logoUrl || null;
-  const logoUnchanged = lastLogoUrl != null && lastLogoUrl === logoUrl;
-
-  if (snap && navUnchanged && logoUnchanged) {
-    const titleEl = root.querySelector("#sidebar-brand-title");
-    const subEl = root.querySelector("#sidebar-brand-sub");
-    const ctxEl = root.querySelector("#sidebar-context-line");
-    const labelEl = root.querySelector("#sidebar-nav-label");
-    if (titleEl) titleEl.textContent = branding.platformName || "SonicWave";
-    if (subEl) subEl.textContent = branding.subtitle || "Platform";
-    if (ctxEl) ctxEl.textContent = stationLine;
-    if (labelEl) labelEl.textContent = `Menu · ${roleLabelNl(role)}`;
-  } else {
-    hydrateSidebarDom(root, branding, stationLine, role, navHtml, {
-      skipLogoIfUrl: logoUnchanged ? logoUrl : null,
-    });
-  }
-  root.classList.remove("sidebar--nav-pending");
-  const reconcileMs = Math.round(now() - tRecon0);
+  root.innerHTML = html;
+  root.classList.add("sidebar--ready");
+  root.dataset.sidebarMounted = "1";
+  wireSidebarLogout(root);
+  scheduleSidebarFadeIn(root);
 
   writeMenuSnapshot(getAuth, session, branding);
 
-  root.dataset.sidebarMounted = "1";
-
   const totalMs = Math.round(now() - tStart);
   const timing = {
-    shellMs,
-    snapshotHydrateMs,
-    networkMs,
-    reconcileMs,
+    networkWaitMs,
+    buildHtmlMs,
     totalMs,
     sidebarInitRuns: typeof window !== "undefined" ? window.__swSidebarMounts : 1,
-    sidebarRenderPasses: sidebarRenderPasses,
-    usedSnapshot: Boolean(snap),
-    navSkipped: Boolean(snap && navUnchanged && logoUnchanged),
+    domRenderPasses: 1,
   };
   if (typeof window !== "undefined") {
     window.__swSidebarTiming = timing;
   }
   if (SONICWAVE_DEBUG) {
-    console.info("[SonicWave sidebar] timing (menu-opbouw)", timing);
+    console.info("[SonicWave sidebar] timing (één render, ms)", timing);
   }
 
   swPerf.sidebarHydrationsCompleted += 1;
